@@ -1,0 +1,39 @@
+# Deploiement du serveur de paiement sur Render (offre gratuite).
+#
+# Marche a suivre :
+#   1. pousse ce dossier "backend" sur un depot GitHub ;
+#   2. sur render.com : New > Blueprint, et pointe vers ce depot ;
+#   3. renseigne les variables marquees sync:false dans le tableau de bord ;
+#   4. recopie l'adresse publique fournie par Render (https://xxx.onrender.com)
+#      dans PUBLIC_URL ici, ET dans PAYMENTS_URL du fichier .env de l'app.
+#
+# Attention : sur l'offre gratuite, le service s'endort apres 15 minutes
+# d'inactivite. Le premier paiement apres une periode creuse peut donc mettre
+# ~30 secondes a demarrer.
+services:
+  - type: web
+    name: bodyai-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Prestataire de paiement retenu.
+      - key: PAYMENT_PROVIDER
+        value: cmi
+      - key: PAYMENT_CURRENCY
+        value: mad
+      # Adresse publique de CE service, a recopier depuis Render.
+      - key: PUBLIC_URL
+        sync: false
+      # Fournis par ta banque a l'ouverture du contrat CMI.
+      - key: CMI_CLIENT_ID
+        sync: false
+      - key: CMI_STORE_KEY
+        sync: false
+      # Cle Gemini pour l'analyse des photos.
+      - key: GEMINI_API_KEY
+        sync: false

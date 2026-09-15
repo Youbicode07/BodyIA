@@ -1,15 +1,30 @@
-# Deploiement du serveur de paiement sur Render (offre gratuite).
+# Deploiement du serveur BodyAI sur Render (offre gratuite).
 #
 # Marche a suivre :
-#   1. pousse ce dossier "backend" sur un depot GitHub ;
-#   2. sur render.com : New > Blueprint, et pointe vers ce depot ;
-#   3. renseigne les variables marquees sync:false dans le tableau de bord ;
-#   4. recopie l'adresse publique fournie par Render (https://xxx.onrender.com)
-#      dans PUBLIC_URL ici, ET dans PAYMENTS_URL du fichier .env de l'app.
+#   1. cree d'abord ta base Neon (gratuite, permanente) — voir plus bas ;
+#   2. pousse ce dossier "backend" sur un depot GitHub ;
+#   3. sur render.com : New > Blueprint, et pointe vers ce depot ;
+#   4. renseigne les variables marquees sync:false dans le tableau de bord,
+#      dont DATABASE_URL (la chaine de connexion Neon) ;
+#   5. recopie l'adresse publique fournie par Render (https://xxx.onrender.com)
+#      dans PUBLIC_URL ici, ET dans API_URL du fichier .env de l'app.
 #
-# Attention : sur l'offre gratuite, le service s'endort apres 15 minutes
-# d'inactivite. Le premier paiement apres une periode creuse peut donc mettre
-# ~30 secondes a demarrer.
+# ATTENTION — POURQUOI LA BASE N'EST PAS HEBERGEE ICI
+# ====================================================
+# Render propose bien une base PostgreSQL gratuite, et c'est ce que ce fichier
+# declarait dans sa premiere version. C'etait un piege : une base PostgreSQL
+# gratuite Render EXPIRE 30 JOURS apres sa creation, puis est SUPPRIMEE avec
+# toutes ses lignes apres 14 jours de sursis. Tous les comptes, analyses,
+# seances et abonnements auraient disparu un mois apres la mise en ligne.
+#
+# La base vit donc chez Neon, dont l'offre gratuite est permanente (0,5 Go,
+# sans carte bancaire, sans expiration). Seul le serveur tourne ici.
+#
+# Reste vrai pour le serveur web gratuit : il s'endort apres 15 minutes
+# d'inactivite, et la premiere requete apres une periode creuse met ~30 s a
+# repondre. L'application le supporte (elle affiche ses donnees locales en
+# attendant), mais c'est la premiere chose a passer en payant le jour ou tu as
+# de vrais utilisateurs.
 services:
   - type: web
     name: bodyai-backend
@@ -19,8 +34,10 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     envVars:
+      # Node 22 minimum : le serveur utilise le module SQLite integre
+      # (node:sqlite) quand aucune base PostgreSQL n'est configuree.
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
       # Prestataire de paiement retenu.
       - key: PAYMENT_PROVIDER
         value: cmi
@@ -37,3 +54,22 @@ services:
       # Cle Gemini pour l'analyse des photos.
       - key: GEMINI_API_KEY
         sync: false
+      # Chaine de connexion Neon, a coller depuis le tableau de bord Neon.
+      # Forme : postgresql://user:motdepasse@ep-xxx.region.aws.neon.tech/bodyai?sslmode=require
+      # SANS elle, le serveur retombe sur SQLite — et le disque d'une instance
+      # gratuite Render est efface a chaque redeploiement : tout serait perdu.
+      - key: DATABASE_URL
+        sync: false
+      # Secret de signature des sessions, genere une fois par Render et
+      # conserve entre les deploiements (sinon tout le monde est deconnecte).
+      - key: SESSION_SECRET
+        generateValue: true
+      # Identifiants OAuth : le serveur verifie lui-meme les jetons Google.
+      - key: GOOGLE_WEB_CLIENT_ID
+        sync: false
+      - key: GOOGLE_IOS_CLIENT_ID
+        sync: false
+      - key: GOOGLE_ANDROID_CLIENT_ID
+        sync: false
+      - key: APPLE_BUNDLE_ID
+        value: com.bodyai.app

@@ -6,13 +6,34 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "API_URL": "https://REMPLACE-MOI.onrender.com",
+        "GOOGLE_WEB_CLIENT_ID": "689996909933-mf030kmf0gu09unh9k9j7k47v28hpj9l.apps.googleusercontent.com",
+        "GOOGLE_ANDROID_CLIENT_ID": "689996909933-c6u2qm7cisgr468hbpdivgkuhk6pbaah.apps.googleusercontent.com",
+        "GOOGLE_IOS_CLIENT_ID": "689996909933-6ajj3sopstehs802lg880nur6h7kl2rj.apps.googleusercontent.com"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "API_URL": "https://REMPLACE-MOI.onrender.com",
+        "GOOGLE_WEB_CLIENT_ID": "689996909933-mf030kmf0gu09unh9k9j7k47v28hpj9l.apps.googleusercontent.com",
+        "GOOGLE_ANDROID_CLIENT_ID": "689996909933-c6u2qm7cisgr468hbpdivgkuhk6pbaah.apps.googleusercontent.com",
+        "GOOGLE_IOS_CLIENT_ID": "689996909933-6ajj3sopstehs802lg880nur6h7kl2rj.apps.googleusercontent.com"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "API_URL": "https://REMPLACE-MOI.onrender.com",
+        "GOOGLE_WEB_CLIENT_ID": "689996909933-mf030kmf0gu09unh9k9j7k47v28hpj9l.apps.googleusercontent.com",
+        "GOOGLE_ANDROID_CLIENT_ID": "689996909933-c6u2qm7cisgr468hbpdivgkuhk6pbaah.apps.googleusercontent.com",
+        "GOOGLE_IOS_CLIENT_ID": "689996909933-6ajj3sopstehs802lg880nur6h7kl2rj.apps.googleusercontent.com"
+      }
     }
   },
   "submit": {

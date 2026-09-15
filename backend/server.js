@@ -15,12 +15,28 @@ const express = require('express');
 const cors = require('cors');
 const { GoogleGenerativeAI, SchemaType } = require('@google/generative-ai');
 
+const db = require('./db');
+const { attachUser } = require('./auth');
+const authRoutes = require('./routes/auth');
+const dataRoutes = require('./routes/data');
+const subscriptionRoutes = require('./routes/subscription');
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 // CMI renvoie son resultat en POST de formulaire (application/x-www-form-urlencoded),
 // pas en JSON : sans ce middleware, req.body serait vide et la signature illisible.
 app.use(express.urlencoded({ extended: false }));
+
+// Lit le jeton de session s'il y en a un, sans jamais rejeter : les routes
+// publiques (analyse IA, tarifs) restent accessibles, et celles qui touchent a
+// des donnees personnelles exigent ensuite un compte via requireAuth.
+app.use(attachUser);
+
+// --- Comptes, donnees utilisateur et abonnement ---------------------------
+app.use('/api/auth', authRoutes);
+app.use('/api/data', dataRoutes);
+app.use('/api/subscription', subscriptionRoutes.router);
 
 if (!process.env.GEMINI_API_KEY) {
   console.warn(
@@ -605,7 +621,7 @@ app.post('/checkout/cmi/return', (req, res) => {
 </body></html>`);
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
   let paymentProvider = null;
   try {
     const provider = activeProvider();
@@ -613,16 +629,50 @@ app.get('/health', (req, res) => {
   } catch (err) {
     paymentProvider = `erreur: ${err.message}`;
   }
+
+  // Une vraie requête, pas un simple drapeau : « la base répond » doit vouloir
+  // dire qu'elle répond maintenant, pas qu'elle a démarré un jour.
+  let database;
+  try {
+    await db.get('SELECT 1 AS ok');
+    database = db.engine;
+  } catch (err) {
+    database = `erreur: ${err.message}`;
+  }
+
   res.json({
     ok: true,
     bodyModel: BODY_MODEL_NAME,
     mealModel: MEAL_MODEL_NAME,
     hasApiKey: Boolean(process.env.GEMINI_API_KEY),
     paymentProvider,
+    database,
+    googleAuth: Boolean(process.env.GOOGLE_WEB_CLIENT_ID),
+    sessionSecret: Boolean(process.env.SESSION_SECRET),
   });
 });
 
+// Filet de sécurité : une exception non rattrapée dans une route ne doit pas
+// renvoyer une page HTML d'erreur à une application qui attend du JSON.
+app.use((err, req, res, _next) => {
+  console.error('Erreur non gérée :', err);
+  res.status(500).json({ error: 'erreur_serveur', detail: err?.message || String(err) });
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () =>
-  console.log(`Backend BodyAI (Gemini) lancé sur le port ${PORT} — corps: ${BODY_MODEL_NAME}, repas: ${MEAL_MODEL_NAME}`),
-);
+
+// La base doit être prête AVANT d'accepter la première requête : démarrer
+// l'écoute puis migrer laisserait passer des requêtes sur des tables absentes.
+db.init()
+  .then((engine) => {
+    app.listen(PORT, '0.0.0.0', () =>
+      console.log(
+        `Backend BodyAI lancé sur le port ${PORT} — base: ${engine}, ` +
+          `corps: ${BODY_MODEL_NAME}, repas: ${MEAL_MODEL_NAME}`,
+      ),
+    );
+  })
+  .catch((err) => {
+    console.error('Base de données inaccessible, le serveur ne démarre pas :', err.message);
+    process.exit(1);
+  });

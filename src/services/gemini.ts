@@ -20,31 +20,65 @@ export const GEMINI_API_KEY = (extra.geminiApiKey ?? '').trim();
 export const BACKEND_URL = (extra.backendUrl ?? '').trim().replace(/\/+$/, '');
 export const USE_DIRECT_GEMINI = Boolean(GEMINI_API_KEY) && !BACKEND_URL;
 
-// Les modèles gratuits sont fréquemment saturés (503 "high demand") ou lents.
-// Plutôt que d'insister sur un modèle bloqué, on en essaie plusieurs : dès que
-// l'un échoue ou traîne, on passe immédiatement au suivant. Chaque modèle a sa
-// propre capacité, donc changer de modèle est bien plus efficace qu'attendre.
-// Ordre issu de mesures réelles sur cette tâche (image + JSON structuré) :
-// 3.7 répond en ~3s, 3.6 en ~4s, 3.5 en ~9s. 3.8 et l'alias "latest" sont
-// régulièrement saturés (503) : ils ne servent que de dernier recours.
+/**
+ * ORDRE DES MODÈLES — ÉTABLI PAR MESURE, PAS PAR SUPPOSITION
+ * ==========================================================
+ *
+ * Les modèles gratuits sont fréquemment saturés (503 « high demand ») ou
+ * lents. Plutôt que d'insister sur un modèle bloqué, on en essaie plusieurs :
+ * dès que l'un échoue ou traîne, on passe au suivant.
+ *
+ * L'ordre précédent partait de l'hypothèse que « le numéro le plus élevé est
+ * le meilleur ». Mesuré sur cette tâche réelle (image + JSON structuré), c'est
+ * faux, et le coût était lourd :
+ *
+ *   gemini-3.7-pro        introuvable (404)
+ *   gemini-3.6-pro        introuvable (404)
+ *   gemini-pro-latest     quota à 0 sans facturation activée
+ *   gemini-3.7-flash      dépasse 25 s, jamais de réponse
+ *   gemini-flash-latest   « high demand » quasi systématique
+ *   gemini-3.6-flash      3,0 s   ← le meilleur compromis
+ *   gemini-3.5-flash      9 à 16 s, très variable
+ *   gemini-3.5-flash-lite 0,8 s, mais moins fin sur l'observation visuelle
+ *
+ * Résultat concret : l'analyse corporelle épuisait quatre modèles morts avant
+ * d'en atteindre un qui répond, soit près de 25 secondes perdues à chaque
+ * photo, avant même le début du travail utile.
+ *
+ * Les modèles introuvables sont retirés — les garder ne sert personne. Ceux
+ * qui échouent par saturation ou quota restent en dernier recours : ils
+ * peuvent redevenir disponibles (facturation activée, pic de charge passé),
+ * et une liste qui se termine par un repli vaut mieux qu'un échec sec.
+ */
 export const MODEL_CANDIDATES = [
-  'gemini-3.7-flash',
   'gemini-3.6-flash',
   'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
+  // Derniers recours : mesurés en échec aujourd'hui, mais susceptibles de
+  // redevenir disponibles. Jamais atteints tant que les précédents répondent.
+  'gemini-3.7-flash',
   'gemini-flash-latest',
 ];
 
-// Réservé à l'analyse corporelle : cette tâche gagne davantage à un modèle
-// plus capable qu'à une réponse rapide — mieux vaut quelques secondes de plus
-// qu'un problème mal identifié. On tente d'abord les variantes "pro" (plus
-// précises sur une tâche visuelle fine), puis on retombe sur la liste rapide
-// si aucune n'est disponible : jamais d'échec total pour un choix de qualité.
+/**
+ * Analyse corporelle : la qualité d'observation prime sur la vitesse.
+ *
+ * `gemini-3.6-flash` reste en tête — c'est le plus capable qui réponde
+ * réellement sur ce compte. `gemini-pro-latest` est placé juste après plutôt
+ * que retiré : il serait le meilleur choix visuel, mais son quota est à 0 sans
+ * facturation activée sur le projet Google Cloud. Le jour où elle l'est, il
+ * prend le relais sans toucher au code.
+ *
+ * `gemini-3.5-flash-lite` est volontairement ABSENT ici : il est le plus
+ * rapide, mais trop grossier pour juger une masse musculaire ou une asymétrie.
+ * Le laisser servirait une analyse médiocre en croyant bien faire.
+ */
 export const BODY_ANALYSIS_MODEL_CANDIDATES = [
-  'gemini-3.7-pro',
-  'gemini-3.6-pro',
+  'gemini-3.6-flash',
   'gemini-pro-latest',
-  ...MODEL_CANDIDATES,
+  'gemini-3.5-flash',
+  'gemini-3.7-flash',
+  'gemini-flash-latest',
 ];
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';

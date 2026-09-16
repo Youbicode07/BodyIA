@@ -55,8 +55,8 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // pense à le mettre à jour si Google le retire à son tour (le message d'erreur indique
 // alors le modèle de remplacement recommandé).
 // "pro" nécessite un projet avec facturation active (quota gratuit à 0 sinon).
-const BODY_MODEL_NAME = process.env.GEMINI_BODY_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash';
-const MEAL_MODEL_NAME = process.env.GEMINI_MEAL_MODEL || process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+const BODY_MODEL_NAME = process.env.GEMINI_BODY_MODEL || process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+const MEAL_MODEL_NAME = process.env.GEMINI_MEAL_MODEL || process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
 // Borne le raisonnement interne du modèle. Sans cette limite, l'analyse des
 // 11 zones prend 60 à 110s et finit parfois tronquée (JSON illisible) ;

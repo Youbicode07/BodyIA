@@ -16,3 +16,14 @@ backend/.env.*
 
 # Base SQLite locale (developpement) : donnees reelles, jamais dans git.
 backend/data/
+
+# Artefacts de build natifs. Deja couverts par android/.gitignore, mais
+# repetes ici : le .gitignore racine est le seul que certains outils lisent,
+# et un autolinking.json genere sous Windows casse les builds Linux (EAS).
+android/build/
+android/.gradle/
+android/app/build/
+android/app/.cxx/
+android/local.properties
+ios/build/
+ios/Pods/

@@ -1,0 +1,51 @@
+# Ce qui ne doit JAMAIS partir vers EAS Build.
+#
+# ATTENTION : dès que ce fichier existe, EAS l'utilise À LA PLACE de
+# .gitignore — pas en plus. Il doit donc reprendre tout ce que .gitignore
+# exclut, sinon node_modules (plusieurs centaines de Mo) partirait dans
+# l'archive.
+#
+# POURQUOI CE FICHIER EXISTE
+# ==========================
+# Une build a échoué avec :
+#   projectDirectory '/home/expo/workingdir/build/android/C:/Users/yourh/.../
+#   node_modules/@react-native-community/slider/android' does not exist
+#
+# Un chemin Linux collé à un chemin Windows. La cause : le fichier généré
+# android/build/generated/autolinking/autolinking.json, produit par une build
+# locale sous Windows, contient les chemins absolus de la machine de dev.
+# React Native réutilise ce cache s'il le trouve au lieu de le régénérer.
+#
+# Il est bien exclu par android/.gitignore (qui contient « build/ »), mais le
+# .gitignore RACINE ne mentionne pas android/ — et EAS CLI ne lit pas
+# toujours les .gitignore imbriqués. L'artefact partait donc dans l'archive,
+# et la build Linux se retrouvait avec des chemins Windows.
+
+# --- Reprise de .gitignore ---
+node_modules/
+.expo/
+dist/
+web-build/
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/data/
+
+# --- Artefacts de build natifs (la cause du problème) ---
+android/build/
+android/.gradle/
+android/app/build/
+android/app/.cxx/
+android/local.properties
+ios/build/
+ios/Pods/
+
+# --- Inutile à la build de l'application mobile ---
+# Le serveur se déploie séparément (voir DEPLOIEMENT.md) : l'embarquer
+# alourdit l'archive envoyée à EAS sans aucun bénéfice.
+backend/
+DEPLOIEMENT.md
+README.md

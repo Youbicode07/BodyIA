@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientButton } from './GradientButton';
@@ -34,7 +34,23 @@ export function PromptScreen({
   children,
 }: Props) {
   return (
-    <View style={styles.container}>
+    /**
+     * ScrollView plutot que View, avec flexGrow: 1.
+     *
+     * Ce reglage se comporte EXACTEMENT comme un `flex: 1` tant que le contenu
+     * tient a l'ecran : les deux ressorts `flex: 1` continuent de centrer le
+     * bloc verticalement. Des que le contenu depasse — petit telephone, zoom
+     * texte systeme active pour l'accessibilite, plusieurs puces — il devient
+     * defilable au lieu d'etre coupe.
+     *
+     * Sans cela, le bouton principal pouvait sortir de l'ecran sans aucun
+     * moyen de l'atteindre : l'utilisateur restait bloque sur l'etape.
+     */
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={{ flex: 1 }} />
 
       <FadeInUp>
@@ -70,12 +86,13 @@ export function PromptScreen({
           <Text style={styles.secondaryText}>{secondaryLabel}</Text>
         </Pressable>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { flexGrow: 1, padding: spacing.lg },
   icon: {
     width: 76, height: 76, borderRadius: radius.lg, alignSelf: 'center',
     alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md,

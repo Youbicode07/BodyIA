@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GradientButton } from '../components/GradientButton';
 import { Card } from '../components/Card';
@@ -13,7 +13,20 @@ const REVIEWS = [
 
 export function RatingScreen({ navigation }: any) {
   return (
-    <View style={styles.container}>
+    /**
+     * ScrollView avec flexGrow: 1 plutot qu'une simple View.
+     *
+     * Le comportement reste identique tant que le contenu tient a l'ecran :
+     * les ressorts `flex: 1` continuent de centrer le bloc. Des que le
+     * contenu deborde — petit telephone, ou zoom texte systeme active pour
+     * l'accessibilite — l'ecran defile au lieu de couper le bouton principal,
+     * qui devenait alors inatteignable.
+     */
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={{ flex: 1 }} />
 
       <FadeInUp>
@@ -45,12 +58,13 @@ export function RatingScreen({ navigation }: any) {
       <View style={{ flex: 1 }} />
 
       <GradientButton label="Continuer" icon="arrow-forward" onPress={() => navigation.navigate('Notifications')} />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { flexGrow: 1, padding: spacing.lg },
   stars: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginBottom: spacing.md },
   title: { ...font.h1, color: colors.text, textAlign: 'center' },
   subtitle: { ...font.caption, color: colors.subtext, textAlign: 'center', marginTop: 6 },

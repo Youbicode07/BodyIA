@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientButton } from '../components/GradientButton';
@@ -42,7 +42,20 @@ export function FollowUpGateScreen({ navigation }: any) {
     : 0;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg }]}>
+    /**
+     * ScrollView avec flexGrow: 1 : mise en page inchangee tant que le contenu
+     * tient a l'ecran, defilement des qu'il deborde (petit telephone, ou zoom
+     * texte systeme active pour l'accessibilite). Sans cela le bouton de
+     * validation sortait de l'ecran, sans aucun moyen de l'atteindre.
+     */
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg },
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.badge}>
         <Ionicons name="camera" size={13} color={colors.warning} />
         <Text style={styles.badgeText}>SUIVI OBLIGATOIRE</Text>
@@ -124,12 +137,13 @@ export function FollowUpGateScreen({ navigation }: any) {
         <Ionicons name="time-outline" size={16} color={colors.subtext} />
         <Text style={styles.snoozeText}>Plus tard ({SNOOZE_HOURS} h)</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing.lg },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { flexGrow: 1, paddingHorizontal: spacing.lg },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',

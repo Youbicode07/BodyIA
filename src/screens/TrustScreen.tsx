@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GradientButton } from '../components/GradientButton';
 import { FadeInUp } from '../components/FadeInUp';
@@ -18,7 +18,20 @@ export function TrustScreen({ navigation }: any) {
   const goal = answers.goal === 'lose' ? 'perte de poids' : answers.goal === 'gain' ? 'prise de muscle' : 'progression équilibrée';
   const frequency = answers.workoutsPerWeek ? `${answers.workoutsPerWeek} séances par semaine` : 'un rythme adapté à toi';
   return (
-    <View style={styles.container}>
+    /**
+     * ScrollView avec flexGrow: 1 plutot qu'une simple View.
+     *
+     * Le comportement reste identique tant que le contenu tient a l'ecran :
+     * les ressorts `flex: 1` continuent de centrer le bloc. Des que le
+     * contenu deborde — petit telephone, ou zoom texte systeme active pour
+     * l'accessibilite — l'ecran defile au lieu de couper le bouton principal,
+     * qui devenait alors inatteignable.
+     */
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={{ flex: 1 }} />
 
       <FadeInUp>
@@ -61,12 +74,13 @@ export function TrustScreen({ navigation }: any) {
         icon="arrow-forward"
         onPress={() => navigation.navigate('PhotoCapture')}
       />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { flexGrow: 1, padding: spacing.lg },
   illustration: { alignItems: 'center', marginBottom: spacing.md },
   rating: { alignItems: 'center', marginBottom: spacing.lg },
   stars: { flexDirection: 'row', gap: 3, marginBottom: 6 },

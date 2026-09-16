@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { Animated, View, Text, StyleSheet, Pressable, Alert, ScrollView } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientButton } from '../components/GradientButton';
@@ -100,7 +100,17 @@ tout moment sur l'écran du programme.`,
     );
 
   return (
-    <View style={styles.container}>
+    /**
+     * ScrollView avec flexGrow: 1 : mise en page inchangee tant que le contenu
+     * tient a l'ecran, defilement des qu'il deborde (petit telephone, ou zoom
+     * texte systeme active pour l'accessibilite). Sans cela le bouton de
+     * validation sortait de l'ecran, sans aucun moyen de l'atteindre.
+     */
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <ScreenHeader
         title="Où t'entraînes-tu ?"
         subtitle="Ton programme sera adapté au matériel disponible"
@@ -139,12 +149,13 @@ tout moment sur l'écran du programme.`,
       <GradientButton label="Continuer" icon="arrow-forward" onPress={goNext} disabled={!choice} />
 
       <SkipStepButton onPress={skipChoice} />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg, paddingTop: spacing.xl },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { flexGrow: 1, padding: spacing.lg, paddingTop: spacing.xl },
   hologram: { flex: 1, minHeight: 390, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   backgroundGlow: {
     position: 'absolute', width: 190, height: 190, borderRadius: 95,

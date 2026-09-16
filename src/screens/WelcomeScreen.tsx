@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientButton } from '../components/GradientButton';
@@ -47,7 +47,17 @@ export function WelcomeScreen({ navigation }: any) {
   const translateY = float.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
 
   return (
-    <View style={[styles.container, { paddingHorizontal: horizontalPadding, paddingTop: verticalScale(spacing.xxl) }]}>
+    /**
+     * Le halo reste EN DEHORS du ScrollView, volontairement.
+     *
+     * Il est en position absolue avec des décalages négatifs (top et left),
+     * qui le font volontairement déborder au-delà du haut de l'écran. Placé
+     * dans le ScrollView, il serait rogné — un ScrollView découpe son contenu
+     * — et l'effet de halo disparaîtrait. Ici il sert de fond, et seul le
+     * contenu défile : rendu identique, mais plus rien ne peut être coupé sur
+     * un petit écran.
+     */
+    <View style={styles.container}>
       {/* Halo décoratif en fond */}
       <LinearGradient
         colors={['rgba(56,189,248,0.22)', 'rgba(17,24,39,0)']}
@@ -60,6 +70,14 @@ export function WelcomeScreen({ navigation }: any) {
         }]}
       />
 
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          styles.content,
+          { paddingHorizontal: horizontalPadding, paddingTop: verticalScale(spacing.xxl) },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.hero}>
         <LinearGradient
           colors={['#0C1930', '#164A69', '#0EA5A5']}
@@ -119,12 +137,14 @@ export function WelcomeScreen({ navigation }: any) {
         />
         <Text style={styles.footnote}>Analyse gratuite · Aucune carte requise</Text>
       </FadeInUp>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg, paddingTop: spacing.xxl },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { flexGrow: 1, paddingBottom: spacing.lg },
   halo: { position: 'absolute' },
   hero: { alignItems: 'center', marginBottom: spacing.lg },
   heroCard: {

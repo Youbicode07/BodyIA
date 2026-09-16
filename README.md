@@ -149,9 +149,15 @@ en ligne. Seul le serveur web tourne sur Render ; la base vit chez Neon.
 
 | Brique | Service | Limite |
 |---|---|---|
-| Base | **Neon** | 0,5 Go · 100 h de calcul/mois · permanent |
-| Serveur | **Render** | 750 h d'instance/mois (= 24 h/24) · permanent |
+| Base | **Neon** | 0,5 Go · 100 h de calcul/mois · permanent, sans carte |
+| Serveur | **Back4App Containers** | 600 h de calcul/mois · permanent, **sans carte à l'inscription** |
 | Éveil | **cron-job.org** sur `/ping` toutes les 10 min | — |
+
+> Render fonctionne aussi (`render.yaml`, 750 h/mois) et reste documenté dans
+> [DEPLOIEMENT.md](DEPLOIEMENT.md), mais son inscription demande parfois une
+> carte bancaire selon les comptes — irrégulier, mais réel. Back4App est
+> confirmé sans carte, et fait tourner ce serveur Express tel quel via
+> `backend/Dockerfile`, sans rien réécrire.
 
 Deux routes de santé, et il ne faut pas les confondre :
 

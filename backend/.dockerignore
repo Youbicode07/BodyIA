@@ -1,0 +1,15 @@
+# Jamais dans l'image : contient des clés et mots de passe en clair.
+.env
+.env.*
+!.env.example
+
+node_modules
+npm-debug.log
+
+# Base SQLite locale (développement) : une image ne doit jamais embarquer de
+# données, et en production DATABASE_URL pointe de toute façon vers Neon.
+data/
+
+.git
+.gitignore
+*.md

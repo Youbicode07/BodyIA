@@ -7,7 +7,7 @@ Il y a **trois maillons**, et ils doivent tous être en place :
 
 ```
   application (.aab)  ──►  serveur public  ──►  base Neon
-       eas.json              Render              DATABASE_URL
+       eas.json           Back4App              DATABASE_URL
 ```
 
 | Maillon | État |
@@ -20,58 +20,72 @@ Tant que le serveur n'est pas public, rien ne peut fonctionner depuis le Play
 Store : le téléphone de l'utilisateur n'est pas sur ton Wi-Fi, il ne peut pas
 joindre ton PC.
 
+## Pourquoi Back4App et pas Render
+
+Render demande parfois une carte bancaire pour vérifier un compte, même sur
+son offre gratuite — c'est irrégulier (lié à la vérification anti-fraude,
+propre à chaque compte) mais réel, et c'est ce que tu as rencontré. Plutôt que
+d'insister sur un hébergeur qui te bloque, ce guide utilise **Back4App
+Containers** : gratuit, confirmé **sans carte bancaire à l'inscription**, et
+il fait tourner le serveur Express tel quel, sans rien réécrire.
+
+Le serveur est packagé dans un `Dockerfile` (`backend/Dockerfile`) plutôt que
+décrit par un fichier propre à un hébergeur : le même conteneur peut se
+redéployer ailleurs (Koyeb, Railway...) sans rien changer au code, si jamais
+Back4App changeait ses conditions à son tour.
+
 ---
 
 ## Étape 1 — Pousser le projet sur GitHub
 
-Render lit le code depuis un dépôt. `render.yaml` doit se trouver **à la racine**
-du dépôt (c'est déjà le cas).
-
 ```bash
 git add -A
-git commit -m "Serveur BodyAI prêt pour le déploiement"
-git branch -M main
-git remote add origin https://github.com/TON-COMPTE/bodyai.git
-git push -u origin main
+git commit -m "Prêt pour le déploiement"
+git push
 ```
 
-> `.env` et `backend/.env` ne partent pas : ils sont ignorés par git. C'est
-> voulu — aucune clé ne doit se retrouver sur GitHub. Les valeurs sont
-> renseignées à l'étape suivante, dans Render.
+> `.env` et `backend/.env` ne partent pas : ils sont ignorés par git. Aucune
+> clé ne doit se retrouver sur GitHub — les valeurs sont renseignées à
+> l'étape suivante, dans Back4App.
 
 ---
 
-## Étape 2 — Créer le service sur Render
+## Étape 2 — Créer le conteneur sur Back4App
 
-1. [render.com](https://render.com) → **Sign up** (connexion avec GitHub).
-2. **New** → **Blueprint**.
-3. Choisis ton dépôt. Render lit `render.yaml` et propose le service
-   `bodyai-backend`.
-4. Render demande les variables marquées `sync: false`. Renseigne-les :
+1. [back4app.com](https://www.back4app.com) → **Sign up** (GitHub ou e-mail,
+   **sans carte bancaire**).
+2. **Containers** → **New App** → **Deploy from GitHub**.
+3. Choisis ton dépôt. Quand Back4App demande le **dossier racine du build**
+   (root/context directory), indique `backend` — c'est là que vit le
+   `Dockerfile`, pas à la racine du projet (qui contient l'application
+   mobile, inutile ici).
+4. Back4App détecte le `Dockerfile` automatiquement. Renseigne les variables
+   d'environnement (les mêmes que dans `backend/.env`) :
 
 | Variable | Valeur |
 |---|---|
-| `DATABASE_URL` | la chaîne Neon, celle de `backend/.env` |
+| `DATABASE_URL` | ta chaîne de connexion Neon |
 | `GEMINI_API_KEY` | ta clé Gemini |
+| `SESSION_SECRET` | génère-la : `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `GOOGLE_WEB_CLIENT_ID` | celui de `backend/.env` |
 | `GOOGLE_ANDROID_CLIENT_ID` | celui de `backend/.env` |
 | `GOOGLE_IOS_CLIENT_ID` | celui de `backend/.env` |
-| `PUBLIC_URL` | *à remplir après* le premier déploiement |
+| `PUBLIC_URL` | *à remplir après* le premier déploiement (étape 5) |
 | `CMI_CLIENT_ID` / `CMI_STORE_KEY` | laisse vide si le paiement n'est pas prêt |
 
-   `SESSION_SECRET` est généré automatiquement par Render, et conservé entre
-   les déploiements : ne le remplace pas, sinon tout le monde est déconnecté.
+   Contrairement à Render, Back4App **ne génère pas** `SESSION_SECRET` tout
+   seul : génère-le toi-même et colle-le. Ne le change plus ensuite, sinon
+   tout le monde est déconnecté.
 
-5. **Apply**. Le premier déploiement prend 2 à 4 minutes.
-6. Render affiche l'adresse du service, par exemple
-   `https://bodyai-backend-xxxx.onrender.com`.
-7. Reviens dans les variables, colle cette adresse dans `PUBLIC_URL`, et laisse
-   Render redéployer.
+5. **Deploy**. La première construction prend 2 à 5 minutes.
+6. Back4App affiche l'adresse publique du conteneur, du type
+   `https://bodyai-backend-xxxx.back4app.io`. Reviens dans les variables,
+   colle cette adresse dans `PUBLIC_URL`, et laisse Back4App redéployer.
 
 ### Vérifier
 
 ```bash
-curl https://bodyai-backend-xxxx.onrender.com/health
+curl https://ton-adresse.back4app.io/health
 ```
 
 Tu dois obtenir :
@@ -81,7 +95,7 @@ Tu dois obtenir :
 ```
 
 - `"database":"sqlite"` → `DATABASE_URL` n'a pas été prise en compte. Les
-  comptes seraient effacés à chaque redéploiement.
+  comptes seraient perdus au redémarrage du conteneur.
 - `"googleAuth":false` → `GOOGLE_WEB_CLIENT_ID` manque. **Toute** connexion
   Google serait refusée, même avec un jeton valide.
 
@@ -89,10 +103,11 @@ Tu dois obtenir :
 
 ## Étape 3 — Pointer l'application sur ce serveur
 
-Dans `eas.json`, remplace `https://REMPLACE-MOI.onrender.com` par ton adresse,
-dans **les trois profils** (`development`, `preview`, `production`).
+Dans `eas.json`, remplace `https://REMPLACE-MOI.onrender.com` par ton adresse
+Back4App, dans **les trois profils** (`development`, `preview`,
+`production`).
 
-La build refusera de démarrer tant que le marqueur est là : c'est volontaire,
+La build refuse de démarrer tant que le marqueur est là : c'est volontaire,
 pour qu'une version muette ne reparte plus jamais sur le Play Store.
 
 Déclare aussi la clé Gemini comme secret EAS (elle n'a rien à faire dans un
@@ -141,20 +156,18 @@ Sans elle : `DEVELOPER_ERROR`, la fenêtre Google se referme instantanément.
 | Brique | Service | Gratuit ? | Limite réelle |
 |---|---|---|---|
 | Base de données | **Neon** | Permanent, sans carte | 0,5 Go · **100 h de calcul/mois** |
-| Serveur API | **Render** | Permanent, sans carte | **750 h d'instance/mois** |
+| Serveur API | **Back4App Containers** | Permanent, sans carte | **600 h de calcul/mois** · le conteneur s'endort après un moment d'inactivité |
 | Maintien en éveil | **cron-job.org** | Permanent, sans carte | — |
 
-750 heures couvrent un service allumé 24 h/24 pendant 31 jours : un serveur
-qui ne dort jamais **tient dans le quota gratuit**.
+600 heures suffisent pour un usage réel (pas un service allumé 24 h/24, mais
+largement de quoi couvrir des utilisateurs qui ouvrent l'app plusieurs fois par
+jour). Comme sur toute offre gratuite, un ping régulier limite les réveils.
 
-### Empêcher le serveur de s'endormir
-
-Render met le service en veille après 15 minutes sans trafic. Un appel régulier
-suffit à l'en empêcher :
+### Empêcher le conteneur de s'endormir
 
 1. [cron-job.org](https://cron-job.org) → créer un compte (gratuit, sans carte).
 2. **Create cronjob** :
-   - URL : `https://ton-backend.onrender.com/ping`
+   - URL : `https://ton-adresse.back4app.io/ping`
    - Intervalle : toutes les **10 minutes**
 3. Enregistrer.
 
@@ -162,18 +175,17 @@ suffit à l'en empêcher :
 
 **Ne fais JAMAIS pointer le cron sur `/health`.**
 
-`/health` interroge la base. Or Neon facture à l'heure de **calcul** — 100 h par
-mois — et s'endort d'elle-même au bout de cinq minutes d'inactivité. Un appel
-toutes les 10 minutes la maintiendrait allumée en permanence, soit ~720 h : le
-quota serait épuisé en **moins d'une semaine**, et Neon suspendrait la base
-jusqu'au mois suivant.
+`/health` interroge la base. Or Neon facture à l'heure de **calcul** — 100 h
+par mois — et s'endort d'elle-même au bout de cinq minutes d'inactivité. Un
+appel toutes les 10 minutes la maintiendrait allumée en permanence, soit
+~720 h : le quota serait épuisé en **moins d'une semaine**, et Neon
+suspendrait la base jusqu'au mois suivant.
 
-`/ping` existe exactement pour ça : il répond sans toucher à la base. Mesuré :
-58 ms pour `/ping`, contre 148 ms pour `/health` qui, lui, réveille Neon.
+`/ping` existe exactement pour ça : il répond sans toucher à la base.
 
 ```
-/ping    → garde Render éveillé,  ne réveille PAS Neon   ✅ pour le cron
-/health  → diagnostic complet,    réveille Neon          ❌ pour le cron
+/ping    → garde le conteneur éveillé,  ne réveille PAS Neon   ✅ pour le cron
+/health  → diagnostic complet,          réveille Neon          ❌ pour le cron
 ```
 
 L'application suit la même règle : elle réveille le serveur par `/ping` avant
@@ -183,13 +195,21 @@ d'envoyer ses données, jamais par `/health`.
 
 Sans cron, tout fonctionne quand même : l'application réveille le serveur
 toute seule et attend jusqu'à 70 secondes. L'utilisateur voit simplement ses
-données locales pendant ce temps, et tout part ensuite. Le cron ne fait
-qu'éliminer cette attente.
+données locales pendant ce temps, et tout part ensuite.
 
 ### Surveiller les quotas
 
 - Neon : [console.neon.tech](https://console.neon.tech) → **Usage** →
   *compute hours*.
-- Render : tableau de bord → **Billing** → *Free instance hours*.
+- Back4App : tableau de bord du conteneur → **Metrics**.
 
-Les deux repartent à zéro le 1er de chaque mois.
+---
+
+## Si tu préfères quand même Render
+
+Render reste une option valable pour qui n'est pas bloqué par la demande de
+carte : c'est un vrai crédit gratuit (750 h/mois), pas un abonnement caché. Le
+fichier `render.yaml`, à la racine du projet, est toujours prêt pour ça
+(**New → Blueprint** sur render.com). Les deux chemins (Back4App via
+`backend/Dockerfile`, ou Render via `render.yaml`) déploient le même code —
+choisis simplement celui que ton compte accepte sans carte.

@@ -3,6 +3,7 @@ import { Pressable, Text, StyleSheet, Animated, StyleProp, ViewStyle } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, radius, shadow, font } from '../theme/colors';
+import { useResponsive } from '../utils/responsive';
 
 type Props = {
   label: string;
@@ -23,6 +24,7 @@ export function GradientButton({
   style,
 }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
+  const { moderateScale } = useResponsive();
 
   const animate = (to: number) =>
     Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
@@ -42,7 +44,7 @@ export function GradientButton({
           style={[styles.button, !disabled && shadow.floating]}
         >
           {icon ? <Ionicons name={icon} size={19} color={disabled ? colors.faint : colors.white} /> : null}
-          <Text style={[styles.label, disabled && { color: colors.faint }]}>{label}</Text>
+          <Text style={[styles.label, { fontSize: moderateScale(16) }, disabled && { color: colors.faint }]}>{label}</Text>
         </LinearGradient>
       </Pressable>
     </Animated.View>

@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientButton } from '../components/GradientButton';
 import { EmptyIllustration } from '../components/EmptyIllustration';
 import { useCoach } from '../context/CoachContext';
+import { useSubscription } from '../context/SubscriptionContext';
+import { canAnalyseBody } from '../services/entitlements';
 import { SNOOZE_HOURS } from '../services/analysisHistory';
 import { muscleLabel } from '../data/muscleGroups';
 import { colors, spacing, radius, font, gradients } from '../theme/colors';
@@ -26,7 +28,13 @@ import { colors, spacing, radius, font, gradients } from '../theme/colors';
  */
 export function FollowUpGateScreen({ navigation }: any) {
   const { history, snoozeCheckIn, stats } = useCoach();
+  const { isPremium } = useSubscription();
   const insets = useSafeAreaInsets();
+
+  // Le suivi est la fonction payante par excellence : c'est la comparaison
+  // dans le temps. On le dit franchement ici plutôt que de laisser l'utilisateur
+  // découvrir le mur une fois la photo prise.
+  const gate = canAnalyseBody(isPremium, history.length);
 
   const latest = history[0];
   const daysLate = latest
@@ -86,12 +94,27 @@ export function FollowUpGateScreen({ navigation }: any) {
         </View>
       </View>
 
-      <GradientButton
-        label="Prendre ma nouvelle photo"
-        icon="camera"
-        gradient={gradients.muscle}
-        onPress={() => navigation.navigate('PhotoCapture')}
-      />
+      {gate.allowed ? (
+        <GradientButton
+          label="Prendre ma nouvelle photo"
+          icon="camera"
+          gradient={gradients.muscle}
+          onPress={() => navigation.navigate('PhotoCapture')}
+        />
+      ) : (
+        <>
+          <Text style={styles.premiumNote}>
+            Le suivi comparatif fait partie de BodyAI Premium : c'est lui qui mesure ce qui a
+            changé depuis ta première analyse.
+          </Text>
+          <GradientButton
+            label="Débloquer mon suivi"
+            icon="sparkles"
+            gradient={gradients.muscle}
+            onPress={() => navigation.navigate('Paywall')}
+          />
+        </>
+      )}
 
       {/* Sortie visible, et non un lien discret en bas de page. Le suivi reste
           obligatoire, mais une panne du service IA ou une journée sans
@@ -118,6 +141,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   badgeText: { ...font.tiny, fontSize: 10, letterSpacing: 1, color: colors.warning },
+  premiumNote: {
+    ...font.caption, color: colors.subtext, textAlign: 'center',
+    marginBottom: spacing.sm, lineHeight: 18,
+  },
 
   middle: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   photoWrap: { width: 150, height: 190, borderRadius: radius.lg, overflow: 'hidden' },

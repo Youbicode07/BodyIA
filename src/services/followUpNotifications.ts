@@ -1,4 +1,3 @@
-import * as Notifications from 'expo-notifications';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 import { FOLLOW_UP_INTERVAL_DAYS } from './analysisHistory';
@@ -11,36 +10,38 @@ import { FOLLOW_UP_INTERVAL_DAYS } from './analysisHistory';
  * un rappel annule et remplace automatiquement le précédent, il ne peut donc
  * jamais y en avoir deux en attente en même temps.
  *
- * Limite honnête à connaître : les notifications LOCALES programmées
- * fonctionnent dans Expo Go, mais leur fiabilité sur une échéance aussi
- * longue qu'un vrai délai de 15 jours (l'app peut être fermée, le téléphone
- * redémarré...) n'est réellement garantie que dans une build de développement
- * ou de production — exactement la même limite que les autres fonctionnalités
- * natives de ce projet (connexion Google).
+ * Sur Android, les notifications push distantes ne sont plus disponibles dans
+ * Expo Go depuis SDK 53. Pour garder l'app démarrable et éviter le crash,
+ * on charge le module uniquement hors Expo Go / hors environnement restreint.
  */
 
 const REMINDER_ID = 'bodyai-followup-checkin';
 
 const IS_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const Notifications = !IS_EXPO_GO ? require('expo-notifications') : null;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export type PermissionState = 'granted' | 'denied' | 'undetermined';
 
 export async function getNotificationPermission(): Promise<PermissionState> {
+  if (!Notifications) return 'denied';
   const { status } = await Notifications.getPermissionsAsync();
   return status as PermissionState;
 }
 
 export async function requestNotificationPermission(): Promise<PermissionState> {
+  if (!Notifications) return 'denied';
   const { status } = await Notifications.requestPermissionsAsync();
   return status as PermissionState;
 }
@@ -53,6 +54,8 @@ export async function requestNotificationPermission(): Promise<PermissionState> 
 export async function scheduleFollowUpReminder(
   days: number = FOLLOW_UP_INTERVAL_DAYS,
 ): Promise<boolean> {
+  if (!Notifications) return false;
+
   const permission = await getNotificationPermission();
   if (permission !== 'granted') return false;
 
@@ -78,13 +81,14 @@ export async function scheduleFollowUpReminder(
 }
 
 export async function cancelFollowUpReminder(): Promise<void> {
+  if (!Notifications) return;
   await Notifications.cancelScheduledNotificationAsync(REMINDER_ID).catch(() => undefined);
 }
 
 /** Crée le canal Android requis pour qu'une notification programmée s'affiche
  * correctement (obligatoire depuis Android 8). Sans effet sur iOS. */
 export async function ensureAndroidChannel(): Promise<void> {
-  if (Platform.OS !== 'android') return;
+  if (!Notifications || Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync('followup', {
     name: 'Suivi de progression',
     importance: Notifications.AndroidImportance.DEFAULT,

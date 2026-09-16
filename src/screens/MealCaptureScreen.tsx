@@ -5,10 +5,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { GradientButton } from '../components/GradientButton';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { useNutrition } from '../context/NutritionContext';
+import { useSubscription } from '../context/SubscriptionContext';
+import { FREE_MEAL_SCANS_PER_DAY, canScanMeal } from '../services/entitlements';
 import { colors, spacing, radius, font, gradients } from '../theme/colors';
 
 export function MealCaptureScreen({ navigation }: any) {
+  const { mealsToday } = useNutrition();
+  const { isPremium } = useSubscription();
   const [uri, setUri] = useState<string | null>(null);
+
+  const gate = canScanMeal(isPremium, mealsToday.length);
+  const scansLeft = Math.max(0, FREE_MEAL_SCANS_PER_DAY - mealsToday.length);
 
   const pickPhoto = async (fromCamera: boolean) => {
     const permission = fromCamera
@@ -30,6 +38,13 @@ export function MealCaptureScreen({ navigation }: any) {
       Alert.alert('Photo requise', 'Prends ou choisis une photo de ton repas.');
       return;
     }
+    if (!gate.allowed) {
+      Alert.alert(gate.title, gate.message, [
+        { text: 'Plus tard', style: 'cancel' },
+        { text: 'Voir Premium', onPress: () => navigation.navigate('Paywall') },
+      ]);
+      return;
+    }
     navigation.navigate('MealAnalyzing', { photoUri: uri });
   };
 
@@ -41,7 +56,11 @@ export function MealCaptureScreen({ navigation }: any) {
     >
       <ScreenHeader
         title="Scanner un repas"
-        subtitle="Calories et macros estimées par l'IA"
+        subtitle={
+          isPremium
+            ? "Calories et macros estimées par l'IA"
+            : `Calories et macros estimées par l'IA · ${scansLeft} scan${scansLeft > 1 ? 's' : ''} restant${scansLeft > 1 ? 's' : ''} aujourd'hui`
+        }
         onBack={() => navigation.goBack()}
       />
 

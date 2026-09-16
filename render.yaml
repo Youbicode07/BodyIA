@@ -2,7 +2,8 @@
 #
 # Marche a suivre :
 #   1. cree d'abord ta base Neon (gratuite, permanente) — voir plus bas ;
-#   2. pousse ce dossier "backend" sur un depot GitHub ;
+#   2. pousse TOUT le projet sur un depot GitHub (ce fichier doit se trouver
+#      a la racine du depot ; le serveur, lui, est dans backend/) ;
 #   3. sur render.com : New > Blueprint, et pointe vers ce depot ;
 #   4. renseigne les variables marquees sync:false dans le tableau de bord,
 #      dont DATABASE_URL (la chaine de connexion Neon) ;
@@ -30,6 +31,10 @@ services:
     name: bodyai-backend
     runtime: node
     plan: free
+    # Le serveur vit dans le sous-dossier backend/, mais CE fichier doit rester
+    # a la racine du depot : c'est la que Render cherche un Blueprint. Place
+    # dans backend/, il n'aurait tout simplement jamais ete trouve.
+    rootDir: backend
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health

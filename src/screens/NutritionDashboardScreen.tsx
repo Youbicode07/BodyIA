@@ -25,7 +25,10 @@ const todayLabel = () =>
   new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
 export function NutritionDashboardScreen({ navigation }: any) {
-  const { meals, totals } = useNutrition();
+  // `mealsToday` et non `meals` : cet écran raconte la JOURNÉE en cours.
+  // Le journal complet (14 jours) sert ailleurs, l'afficher ici ferait
+  // compter les repas d'hier dans le total du jour.
+  const { mealsToday: meals, totals } = useNutrition();
   const { answers } = useOnboarding();
   const { user } = useUser();
 

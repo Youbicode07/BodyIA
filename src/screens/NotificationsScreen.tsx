@@ -1,5 +1,6 @@
 import React from 'react';
 import { PromptScreen } from '../components/PromptScreen';
+import { useOnboarding } from '../context/OnboardingContext';
 import { ensureAndroidChannel, requestNotificationPermission } from '../services/followUpNotifications';
 import { gradients } from '../theme/colors';
 
@@ -11,7 +12,20 @@ import { gradients } from '../theme/colors';
  * déclenche maintenant réellement.
  */
 export function NotificationsScreen({ navigation }: any) {
-  const next = () => navigation.navigate('Auth');
+  const { completeOnboarding } = useOnboarding();
+
+  /**
+   * Dernière étape du parcours d'inscription.
+   *
+   * C'est ici que l'inscription est marquée comme TERMINÉE. Sans ce repère,
+   * l'application n'avait aucun moyen de savoir qu'un questionnaire avait été
+   * rempli, et le redemandait à chaque ouverture. On entre ensuite directement
+   * dans l'application : le compte a déjà été créé au début du parcours.
+   */
+  const next = () => {
+    completeOnboarding();
+    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+  };
 
   const enable = async () => {
     await ensureAndroidChannel();

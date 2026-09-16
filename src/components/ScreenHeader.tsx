@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, font } from '../theme/colors';
+import { useResponsive } from '../utils/responsive';
 
 type Props = {
   title: string;
@@ -13,6 +14,8 @@ type Props = {
 
 /** En-tête d'écran cohérent : bouton retour optionnel, titre, sous-titre. */
 export function ScreenHeader({ title, subtitle, onBack, right, dark = false }: Props) {
+  const { moderateScale } = useResponsive();
+
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
@@ -22,7 +25,7 @@ export function ScreenHeader({ title, subtitle, onBack, right, dark = false }: P
           </Pressable>
         ) : null}
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, dark && styles.darkTitle]}>{title}</Text>
+          <Text style={[styles.title, { fontSize: moderateScale(28) }, dark && styles.darkTitle]}>{title}</Text>
           {subtitle ? <Text style={[styles.subtitle, dark && styles.darkSubtitle]}>{subtitle}</Text> : null}
         </View>
         {right}

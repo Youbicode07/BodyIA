@@ -16,8 +16,8 @@ import Constants from 'expo-constants';
 
 const extra = (Constants.expoConfig?.extra ?? {}) as { geminiApiKey?: string; backendUrl?: string };
 
-export const GEMINI_API_KEY = extra.geminiApiKey ?? '';
-export const BACKEND_URL = extra.backendUrl ?? '';
+export const GEMINI_API_KEY = (extra.geminiApiKey ?? '').trim();
+export const BACKEND_URL = (extra.backendUrl ?? '').trim().replace(/\/+$/, '');
 export const USE_DIRECT_GEMINI = Boolean(GEMINI_API_KEY) && !BACKEND_URL;
 
 // Les modèles gratuits sont fréquemment saturés (503 "high demand") ou lents.
@@ -139,12 +139,15 @@ export async function generateStructured<T>({
     const timeBudget = Math.min(PER_MODEL_TIMEOUT_MS, timeoutMs);
     const timer = setTimeout(() => controller.abort(), timeBudget);
     try {
-      const response = await fetch(`${API_BASE}/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+      const response = await fetch(
+        `${API_BASE}/${model}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+        {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: buildBody(budget),
         signal: controller.signal,
-      });
+        },
+      );
 
       const json = await response.json();
 
@@ -242,9 +245,12 @@ export async function pingGemini(): Promise<{ ok: boolean; modelCount?: number; 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15_000);
   try {
-    const res = await fetch(`${API_BASE}?key=${GEMINI_API_KEY}&pageSize=50`, {
+    const res = await fetch(
+      `${API_BASE}?key=${encodeURIComponent(GEMINI_API_KEY)}&pageSize=50`,
+      {
       signal: controller.signal,
-    });
+      },
+    );
     const json = await res.json();
     if (!res.ok) {
       return { ok: false, error: json?.error?.message ?? `HTTP ${res.status}` };
@@ -287,7 +293,9 @@ export async function testModel(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 25_000);
   try {
-    const res = await fetch(`${API_BASE}/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+    const res = await fetch(
+      `${API_BASE}/${model}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+      {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
@@ -307,7 +315,8 @@ export async function testModel(
           thinkingConfig: { thinkingBudget: budget },
         },
       }),
-    });
+      },
+    );
     const json = await res.json();
     if (!res.ok) {
       const message = json?.error?.message ?? `HTTP ${res.status}`;

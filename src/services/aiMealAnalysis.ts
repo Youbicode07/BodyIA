@@ -145,7 +145,15 @@ function cleanIngredients(raw: unknown): MealIngredient[] {
  * Analyse la photo d'un repas : appel direct à Gemini (par défaut) ou via un
  * backend déployé si BACKEND_URL est renseignée dans .env.
  */
-export async function analyzeMealPhoto(base64Image: string): Promise<MealAnalysisResult> {
+export async function analyzeMealPhoto(
+  base64Image: string,
+  /**
+   * Contexte de la journée (objectif calorique, déjà consommé, régime), fourni
+   * par progressContext.ts. Il ne change pas l'estimation de l'assiette — il
+   * rend le conseil chiffré et utilisable aujourd'hui plutôt que général.
+   */
+  dayContext: string | null = null,
+): Promise<MealAnalysisResult> {
   try {
     if (!base64Image) throw new Error('Aucune photo à analyser.');
 
@@ -154,7 +162,12 @@ export async function analyzeMealPhoto(base64Image: string): Promise<MealAnalysi
     const raw = USE_DIRECT_GEMINI
       ? await generateStructured<MealAnalysisResult>({
           base64Image,
-          prompt: MEAL_PROMPT,
+          prompt: dayContext
+            ? `${MEAL_PROMPT}
+
+CONTEXTE DE LA JOURNÉE DE CETTE PERSONNE :
+${dayContext}`
+            : MEAL_PROMPT,
           responseSchema: mealSchema,
           timeoutMs: 70_000,
           // Un peu de raisonnement aide ici : estimer des portions demande de

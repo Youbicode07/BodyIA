@@ -1,16 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { OnboardingProvider } from './src/context/OnboardingContext';
 import { UserProvider } from './src/context/UserContext';
+import { SubscriptionProvider } from './src/context/SubscriptionContext';
 import { NutritionProvider } from './src/context/NutritionContext';
 import { CoachProvider } from './src/context/CoachContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { startAutoFlush } from './src/services/sync';
 import { colors } from './src/theme/colors';
 
 export default function App() {
+  // Les modifications faites hors ligne repartent dès que l'application
+  // revient au premier plan, sans que l'utilisateur ait quoi que ce soit à
+  // faire — ni bouton à trouver, ni écran à rouvrir.
+  useEffect(() => startAutoFlush(), []);
+
   return (
     // SafeAreaProvider est obligatoire pour useSafeAreaInsets : sans lui, la
     // barre d'onglets lève une exception au lancement. Il donne aussi les
@@ -21,6 +28,9 @@ export default function App() {
           toute l'application. */}
       <ErrorBoundary>
       <UserProvider>
+        {/* L'abonnement est rattaché au compte : il doit vivre sous
+            UserProvider, et au-dessus des écrans qui en dépendent. */}
+        <SubscriptionProvider>
         <OnboardingProvider>
           <NutritionProvider>
             {/* CoachProvider lit le compte ET les réponses d'inscription : il
@@ -45,6 +55,7 @@ export default function App() {
             </CoachProvider>
           </NutritionProvider>
         </OnboardingProvider>
+        </SubscriptionProvider>
       </UserProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

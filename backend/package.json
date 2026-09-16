@@ -2,9 +2,13 @@
   "name": "bodyai-backend",
   "version": "1.0.0",
   "main": "server.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "start": "node server.js",
-    "data": "node scripts/data.js"
+    "data": "node scripts/data.js",
+    "doctor": "node scripts/doctor.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

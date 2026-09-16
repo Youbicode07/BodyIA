@@ -11,6 +11,7 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { FollowUpGateScreen } from '../screens/FollowUpGateScreen';
 import { useCoach } from '../context/CoachContext';
 import { colors, gradients, shadow, font } from '../theme/colors';
+import { useResponsive } from '../utils/responsive';
 
 const Tab = createBottomTabNavigator();
 
@@ -31,6 +32,7 @@ function TabItem({
   focused: boolean;
 }) {
   const anim = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const { width } = useResponsive();
 
   useEffect(() => {
     Animated.spring(anim, {
@@ -45,7 +47,7 @@ function TabItem({
   const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
 
   return (
-    <View style={styles.tabItem}>
+    <View style={[styles.tabItem, { width: width / 5 }]}>
       <Animated.View style={{ transform: [{ translateY }, { scale }] }}>
         <Ionicons
           name={(focused ? icon : `${icon}-outline`) as any}
@@ -79,6 +81,7 @@ export function MainTabs({ navigation }: any) {
   // La barre respecte l'encoche du bas (iPhone) sans forcer de hauteur fixe,
   // qui rognait les libellés sur certains Android.
   const insets = useSafeAreaInsets();
+  const { width } = useResponsive();
   const { followUpDue, isReady } = useCoach();
 
   // Le suivi à 15 jours est OBLIGATOIRE : tant qu'il n'est pas honoré,
@@ -98,7 +101,7 @@ export function MainTabs({ navigation }: any) {
           styles.tabBar,
           { height: 62 + insets.bottom, paddingBottom: insets.bottom },
         ],
-        tabBarItemStyle: { paddingTop: 8 },
+        tabBarItemStyle: { paddingTop: 8, minWidth: width / 5 },
       }}
     >
       {/* Ordre : le coach d'abord (progression, prochaine séance), puis le

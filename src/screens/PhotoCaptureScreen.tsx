@@ -7,6 +7,9 @@ import { GradientButton } from '../components/GradientButton';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkipStepButton } from '../components/SkipStepButton';
 import { useOnboarding } from '../context/OnboardingContext';
+import { useCoach } from '../context/CoachContext';
+import { useSubscription } from '../context/SubscriptionContext';
+import { canAnalyseBody } from '../services/entitlements';
 import { colors, spacing, radius, font, gradients } from '../theme/colors';
 
 const TIPS = [
@@ -17,7 +20,13 @@ const TIPS = [
 
 export function PhotoCaptureScreen({ navigation }: any) {
   const { updateAnswers } = useOnboarding();
+  const { history } = useCoach();
+  const { isPremium } = useSubscription();
   const [uri, setUri] = useState<string | null>(null);
+
+  // Le quota se compte sur les analyses REELLEMENT archivees, pas sur le
+  // nombre de photos prises : une analyse qui a echoue ne doit rien consommer.
+  const gate = canAnalyseBody(isPremium, history.length);
 
   const pickPhoto = async (fromCamera: boolean) => {
     const permission = fromCamera
@@ -61,6 +70,13 @@ Tu pourras lancer l'analyse quand tu veux depuis l'onglet Corps.`,
   const goNext = async () => {
     if (!uri) {
       Alert.alert('Photo requise', 'Prends ou choisis une photo pour continuer.');
+      return;
+    }
+    if (!gate.allowed) {
+      Alert.alert(gate.title, gate.message, [
+        { text: 'Plus tard', style: 'cancel' },
+        { text: 'Voir Premium', onPress: () => navigation.navigate('Paywall') },
+      ]);
       return;
     }
     navigation.navigate('AnalysisLoading');

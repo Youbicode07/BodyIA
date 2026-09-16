@@ -6,6 +6,9 @@ import { photoToBase64 } from '../services/imagePrep';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useUser } from '../context/UserContext';
 import { appendHistoryEntry, toHistoryEntry } from '../services/analysisHistory';
+import { enqueue } from '../services/sync';
+import { buildProgressContext } from '../services/progressContext';
+import { useCoach } from '../context/CoachContext';
 import { scheduleFollowUpReminder } from '../services/followUpNotifications';
 import { colors, spacing, font, gradients } from '../theme/colors';
 
@@ -20,6 +23,8 @@ const messages = [
 export function AnalysisLoadingScreen({ navigation }: any) {
   const { answers, updateAnswers } = useOnboarding();
   const { user } = useUser();
+  // history et workoutLog alimentent la comparaison avec l'analyse précédente.
+  const { history, workoutLog } = useCoach();
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
@@ -33,7 +38,12 @@ export function AnalysisLoadingScreen({ navigation }: any) {
         // Le profil de l'onboarding est transmis à l'IA : c'est ce qui rend
         // l'analyse réellement personnalisée plutôt qu'une lecture d'image
         // indépendante de la personne qui l'a prise.
-        const result = await analyzeBodyPhoto(base64, answers);
+        // L'analyse reçoit maintenant l'historique MESURÉ : analyse
+        // précédente et ses notes de gravité, séances réellement faites depuis,
+        // variation de poids. C'est ce qui lui permet de dire ce qui a changé
+        // plutôt que de redécrire un état à chaque fois.
+        const progress = buildProgressContext(history, workoutLog, answers);
+        const result = await analyzeBodyPhoto(base64, answers, progress.text);
         // L'analyse est faite : le marqueur « étape passée » n'a plus lieu d'être.
         updateAnswers({ analysis: result, analysisSkipped: false });
 
@@ -41,7 +51,11 @@ export function AnalysisLoadingScreen({ navigation }: any) {
         // VRAIE analyse : archiver un repli générique fausserait toute
         // comparaison de progression future.
         if (!result.isFallback) {
-          await appendHistoryEntry(user?.id, toHistoryEntry(result, answers.bodyPhotoUri));
+          const entry = toHistoryEntry(result, answers.bodyPhotoUri);
+          await appendHistoryEntry(user?.id, entry);
+          // L'analyse rejoint la base : c'est elle qui rend la comparaison de
+          // progression possible d'un appareil à l'autre, et dans la durée.
+          if (user?.id) enqueue({ kind: 'analysis', analysis: entry });
           // Best-effort : si la permission n'a pas été accordée, la fonction
           // ne programme simplement rien, sans faire échouer l'analyse.
           await scheduleFollowUpReminder().catch(() => undefined);

@@ -19,6 +19,7 @@ import { NotificationsScreen } from '../screens/NotificationsScreen';
 
 // Compte
 import { AuthScreen } from '../screens/AuthScreen';
+import { PaywallScreen } from '../screens/PaywallScreen';
 
 // Séance guidée
 import { WorkoutSessionScreen } from '../screens/WorkoutSessionScreen';
@@ -68,6 +69,14 @@ export function RootNavigator() {
 
       {/* Compte */}
       <Stack.Screen name="Auth" component={AuthScreen} />
+      {/* Abonnement. Présenté en feuille modale : on peut le refermer quand il
+          est ouvert depuis le profil, et il est verrouillé (dismissible:false)
+          quand il barre l'accès à une fonction payante. */}
+      <Stack.Screen
+        name="Paywall"
+        component={PaywallScreen}
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
 
       {/* App principale (post-onboarding) */}
       <Stack.Screen name="MainTabs" component={MainTabs} />

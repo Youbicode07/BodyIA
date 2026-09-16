@@ -117,7 +117,7 @@ const bodySchema = {
   required: ['personDetected', 'viewAngle', 'shoulderBox', 'hipBox', 'summary', 'zones'],
 };
 
-function buildPrompt(profileContext: string): string {
+function buildPrompt(profileContext: string, progressContext: string | null): string {
   return `Tu es un coach sportif expert en analyse visuelle de physique, connu
 pour la PRÉCISION de son œil : tu ne signales un déséquilibre que lorsqu'il
 est réellement visible, jamais par supposition ou par habitude.
@@ -125,6 +125,9 @@ Tu analyses UNE photo réelle. Ta règle absolue : NE JAMAIS INVENTER.
 
 PROFIL DE LA PERSONNE (déclaré par elle-même) :
 ${profileContext}
+
+HISTORIQUE MESURÉ (faits enregistrés, pas des impressions) :
+${progressContext ?? 'Aucun historique disponible.'}
 
 Ce profil sert UNIQUEMENT à adapter la recommandation d'entraînement à cette
 personne précise (niveau, objectif, fréquence). Il ne doit JAMAIS te faire
@@ -370,6 +373,12 @@ async function analyzeViaBackend(base64Image: string, profileContext: string) {
 export async function analyzeBodyPhoto(
   base64Image: string,
   answers: OnboardingAnswers = {},
+  /**
+   * Historique mesuré (analyse précédente, séances faites, poids relevés),
+   * fabriqué par progressContext.ts. Facultatif : sans lui, l'analyse reste
+   * correcte, elle ne peut simplement pas parler d'évolution.
+   */
+  progressContext: string | null = null,
 ): Promise<BodyAnalysisResult> {
   try {
     if (!base64Image) throw new Error('Aucune photo à analyser.');
@@ -383,7 +392,7 @@ export async function analyzeBodyPhoto(
     const raw: RawAnalysis = USE_DIRECT_GEMINI
       ? await generateStructured<RawAnalysis>({
           base64Image,
-          prompt: buildPrompt(profileContext),
+          prompt: buildPrompt(profileContext, progressContext),
           responseSchema: bodySchema,
           timeoutMs: 75_000,
           models: BODY_ANALYSIS_MODEL_CANDIDATES,
@@ -395,7 +404,10 @@ export async function analyzeBodyPhoto(
           // pas devinée.
           thinkingBudget: 768,
         })
-      : await analyzeViaBackend(base64Image, profileContext);
+      : await analyzeViaBackend(
+          base64Image,
+          [profileContext, progressContext].filter(Boolean).join('\n\n'),
+        );
 
     // L'IA n'a vu personne : on le dit franchement plutôt que de produire une
     // analyse corporelle sur une image qui n'en contient pas.

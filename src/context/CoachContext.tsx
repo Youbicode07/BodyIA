@@ -9,6 +9,8 @@ import React, {
 } from 'react';
 import { OnboardingAnswers, useOnboarding } from './OnboardingContext';
 import { useUser } from './UserContext';
+import { API_CONFIGURED, dataApi, loadToken } from '../services/api';
+import { enqueue } from '../services/sync';
 import {
   HistoryEntry,
   clearFollowUpSnooze,
@@ -105,6 +107,7 @@ export function CoachProvider({ children }: { children: ReactNode }) {
   const userId = user?.id;
 
   const refresh = useCallback(async () => {
+    // Local d'abord : le tableau de bord doit s'afficher sans attendre le réseau.
     const [savedProgram, log, entries, snooze] = await Promise.all([
       loadProgram(userId),
       loadWorkoutLog(userId),
@@ -115,6 +118,46 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     setWorkoutLog(log);
     setHistory(entries);
     setSnoozedUntil(snooze);
+
+    // Puis le serveur, SANS bloquer l'affichage. Un hébergement gratuit sort
+    // de veille en une minute ; attendre ici figerait le tableau de bord aussi
+    // longtemps, alors que les données locales sont déjà prêtes à l'écran.
+    // On fusionne par identifiant, jamais on ne remplace : ce qui a été produit
+    // hors ligne et pas encore envoyé doit survivre.
+    if (!userId || !API_CONFIGURED || !(await loadToken())) return;
+    void (async () => {
+    try {
+      const [remoteProgram, remoteAnalyses, remoteWorkouts] = await Promise.all([
+        dataApi.getProgram(),
+        dataApi.getAnalyses(),
+        dataApi.getWorkouts(),
+      ]);
+
+      if (remoteProgram?.program && !savedProgram) {
+        setProgram(remoteProgram.program);
+        await saveProgram(userId, remoteProgram.program);
+      }
+
+      const mergeById = <T extends { id?: string }>(remote: T[], local: T[]) => {
+        const byId = new Map<string, T>();
+        for (const item of [...(remote ?? []), ...local]) {
+          if (item?.id) byId.set(item.id, item);
+        }
+        return [...byId.values()];
+      };
+
+      const mergedHistory = mergeById(remoteAnalyses?.analyses ?? [], entries).sort(
+        (a: any, b: any) => b.date - a.date,
+      );
+      const mergedLog = mergeById(remoteWorkouts?.workouts ?? [], log).sort(
+        (a: any, b: any) => b.date - a.date,
+      );
+      setHistory(mergedHistory as HistoryEntry[]);
+      setWorkoutLog(mergedLog as WorkoutLogEntry[]);
+    } catch {
+      // Hors ligne ou session expirée : les données locales font foi.
+    }
+    })();
   }, [userId]);
 
   // Rechargement à chaque changement de compte : deux comptes sur le même
@@ -140,6 +183,7 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     });
     setProgram(next);
     await saveProgram(userId, next);
+    if (userId) enqueue({ kind: 'program', program: next });
     return next;
   }, [answers, history, program, userId]);
 
@@ -172,6 +216,9 @@ export function CoachProvider({ children }: { children: ReactNode }) {
       const entry = toLogEntry(session, completedIndexes, extra);
       const updated = await appendWorkout(userId, entry);
       setWorkoutLog(updated);
+      // La séance rejoint la base : elle compte dans la progression, et cette
+      // progression doit survivre au téléphone.
+      if (userId) enqueue({ kind: 'workout', workout: entry });
     },
     [userId],
   );
@@ -195,6 +242,7 @@ export function CoachProvider({ children }: { children: ReactNode }) {
     setWorkoutLog([]);
     setHistory([]);
     setSnoozedUntil(0);
+    if (userId) await enqueue({ kind: 'reset' });
   }, [userId]);
 
   const snoozeCheckIn = useCallback(async () => {

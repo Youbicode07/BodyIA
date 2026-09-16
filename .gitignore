@@ -13,3 +13,6 @@ web-build/
 backend/.env
 backend/.env.*
 !backend/.env.example
+
+# Base SQLite locale (developpement) : donnees reelles, jamais dans git.
+backend/data/

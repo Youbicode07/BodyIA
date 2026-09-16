@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Pressable, Text, View, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, font } from '../theme/colors';
+import { useResponsive } from '../utils/responsive';
 
 type Props = {
   label: string;
@@ -13,6 +14,7 @@ type Props = {
 
 export function ChoiceCard({ label, sublabel, selected, onPress, icon }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
+  const { moderateScale } = useResponsive();
   const animate = (to: number) =>
     Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 45, bounciness: 5 }).start();
 
@@ -30,7 +32,7 @@ export function ChoiceCard({ label, sublabel, selected, onPress, icon }: Props) 
           </View>
         ) : null}
         <View style={{ flex: 1 }}>
-          <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
+          <Text style={[styles.label, { fontSize: moderateScale(15) }, selected && styles.labelSelected]}>{label}</Text>
           {sublabel ? (
             <Text style={[styles.sublabel, selected && styles.sublabelSelected]}>{sublabel}</Text>
           ) : null}

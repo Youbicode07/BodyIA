@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,9 @@ import { FadeInUp } from '../components/FadeInUp';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useUser } from '../context/UserContext';
 import { useCoach } from '../context/CoachContext';
+import { useSubscription } from '../context/SubscriptionContext';
+import { API_CONFIGURED } from '../services/api';
+import { SyncState, subscribeSync, syncNow } from '../services/sync';
 import { buildProfileSections, profileCompletion } from '../services/profileSummary';
 import { colors, spacing, radius, font, gradients } from '../theme/colors';
 
@@ -35,8 +38,22 @@ function initials(name: string): string {
 
 export function ProfileScreen({ navigation }: any) {
   const { answers, resetAnswers } = useOnboarding();
-  const { user, signOut } = useUser();
+  const { user, signOut, isRemote, sessionExpired } = useUser();
   const { stats, program, history, resetCoachData } = useCoach();
+  const { subscription, isPremium, trialDaysLeft, paymentsAvailable } = useSubscription();
+
+  // État de la sauvegarde en ligne, mis à jour en direct par le service de
+  // synchronisation : l'utilisateur doit pouvoir voir si ses données sont
+  // réellement enregistrées, pas seulement l'espérer.
+  const [sync, setSync] = useState<SyncState | null>(null);
+  useEffect(() => subscribeSync(setSync), []);
+  const [syncing, setSyncing] = useState(false);
+
+  const runSync = async () => {
+    setSyncing(true);
+    await syncNow();
+    setSyncing(false);
+  };
 
   const goalLabel = answers.goal ? GOAL_LABEL[answers.goal] ?? answers.goal : 'Objectif non défini';
   const analysedZones = (answers.analysis?.zones ?? []).filter(
@@ -186,6 +203,122 @@ export function ProfileScreen({ navigation }: any) {
           </Card>
         </FadeInUp>
 
+        {/* Sauvegarde en ligne : dire clairement où vivent les données.
+            Sans compte, elles ne quittent pas le téléphone — et une
+            désinstallation les emporte. C'est une information que
+            l'utilisateur doit avoir AVANT de la découvrir à ses dépens. */}
+        <FadeInUp delay={70}>
+          <Card style={styles.subCard}>
+            <View style={styles.subHeader}>
+              <View
+                style={[
+                  styles.subIcon,
+                  { backgroundColor: isRemote ? 'rgba(14,165,165,0.16)' : 'rgba(245,158,11,0.16)' },
+                ]}
+              >
+                <Ionicons
+                  name={isRemote ? 'cloud-done' : 'phone-portrait-outline'}
+                  size={19}
+                  color={isRemote ? colors.success : colors.warning}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.subTitle}>
+                  {isRemote ? 'Sauvegarde en ligne active' : 'Données sur ce téléphone uniquement'}
+                </Text>
+                <Text style={styles.subMeta}>
+                  {sessionExpired
+                    ? 'Session expirée : reconnecte-toi pour reprendre la sauvegarde.'
+                    : isRemote
+                      ? sync?.pending
+                        ? `${sync.pending} modification${sync.pending > 1 ? 's' : ''} en attente d'envoi`
+                        : sync?.lastSyncAt
+                          ? `Synchronisé à ${new Date(sync.lastSyncAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+                          : 'Tout est à jour'
+                      : !API_CONFIGURED
+                        ? "Aucun serveur configuré dans cette build (API_URL absente de .env)."
+                        : 'Connecte-toi pour retrouver tes données sur un autre téléphone.'}
+                </Text>
+              </View>
+            </View>
+
+            {sync?.lastError ? <Text style={styles.subNotice}>{sync.lastError}</Text> : null}
+
+            {isRemote ? (
+              <Pressable onPress={runSync} disabled={syncing} style={styles.subCta}>
+                <Ionicons name={syncing ? 'sync' : 'cloud-upload-outline'} size={15} color={colors.white} />
+                <Text style={styles.subCtaText}>
+                  {syncing ? 'Synchronisation…' : 'Synchroniser maintenant'}
+                </Text>
+              </Pressable>
+            ) : user && API_CONFIGURED ? (
+              <Pressable
+                onPress={() => navigation.navigate('Auth', { returnTo: 'back' })}
+                style={styles.subCta}
+              >
+                <Ionicons name="cloud-upload-outline" size={15} color={colors.white} />
+                <Text style={styles.subCtaText}>Activer la sauvegarde en ligne</Text>
+              </Pressable>
+            ) : null}
+          </Card>
+        </FadeInUp>
+
+        {/* Abonnement : état réel du compte, jamais une promesse. Les styles
+            existaient déjà dans cette feuille mais aucune carte ne les
+            utilisait — la section était simplement absente de l'écran. */}
+        <FadeInUp delay={80}>
+          <Card style={styles.subCard}>
+            <View style={styles.subHeader}>
+              <View
+                style={[
+                  styles.subIcon,
+                  { backgroundColor: isPremium ? 'rgba(14,165,165,0.16)' : 'rgba(124,58,237,0.16)' },
+                ]}
+              >
+                <Ionicons
+                  name={isPremium ? 'checkmark-circle' : 'sparkles'}
+                  size={19}
+                  color={isPremium ? colors.success : colors.gym}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.subTitle}>
+                  {subscription.status === 'trial'
+                    ? `Essai Premium · ${trialDaysLeft} j restants`
+                    : subscription.status === 'active'
+                      ? 'BodyAI Premium'
+                      : subscription.status === 'expired'
+                        ? 'Abonnement expiré'
+                        : 'Plan gratuit'}
+                </Text>
+                <Text style={styles.subMeta}>
+                  {isPremium && subscription.expiresAt
+                    ? `Renouvellement le ${new Date(subscription.expiresAt).toLocaleDateString('fr-FR')}`
+                    : isPremium
+                      ? 'Toutes les fonctionnalités sont débloquées'
+                      : '1 analyse corporelle · 3 scans de repas par jour'}
+                </Text>
+              </View>
+            </View>
+
+            {!isPremium ? (
+              <Pressable onPress={() => navigation.navigate('Paywall')} style={styles.subCta}>
+                <Ionicons name="lock-open" size={15} color={colors.white} />
+                <Text style={styles.subCtaText}>
+                  {subscription.status === 'expired' ? 'Réactiver Premium' : 'Passer à Premium'}
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {!paymentsAvailable ? (
+              <Text style={styles.subNotice}>
+                Le paiement par carte n'est pas encore branché sur cette build : renseigne
+                PAYMENTS_URL dans .env avec l'adresse du backend déployé.
+              </Text>
+            ) : null}
+          </Card>
+        </FadeInUp>
+
         {/* Toutes les réponses d'inscription, regroupées par thème. */}
         {sections.map((section, i) => (
           <FadeInUp key={section.title} delay={100 + i * 50}>
@@ -224,6 +357,13 @@ export function ProfileScreen({ navigation }: any) {
                 onPress={() => navigation.navigate('PhotoCapture')}
               />
               <SettingsRow
+                icon="card-outline"
+                color={colors.brandAlt}
+                label="Mon abonnement"
+                value={isPremium ? 'Premium' : 'Gratuit'}
+                onPress={() => navigation.navigate('Paywall')}
+              />
+              <SettingsRow
                 icon="refresh-outline"
                 color={colors.carbs}
                 label="Refaire mon questionnaire"
@@ -232,7 +372,7 @@ export function ProfileScreen({ navigation }: any) {
               <SettingsRow
                 icon="pulse-outline"
                 color={colors.success}
-                label="Diagnostic IA"
+                label="Diagnostic (IA · Google · paiement)"
                 value="tester"
                 onPress={() => navigation.navigate('Diagnostic')}
                 isLast={!user}

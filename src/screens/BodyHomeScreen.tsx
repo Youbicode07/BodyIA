@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, Dimensions, Pressable } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,8 +13,7 @@ import { useUser } from '../context/UserContext';
 import { isFollowUpDue, loadHistory } from '../services/analysisHistory';
 import { muscleLabel, ZoneStatus } from '../data/muscleGroups';
 import { colors, spacing, radius, font, gradients } from '../theme/colors';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '../utils/responsive';
 
 const STATUS_COLOR: Record<ZoneStatus, string> = {
   priority: colors.danger,
@@ -23,6 +22,7 @@ const STATUS_COLOR: Record<ZoneStatus, string> = {
 };
 
 export function BodyHomeScreen({ navigation }: any) {
+  const { width, horizontalPadding, verticalScale } = useResponsive();
   const { answers } = useOnboarding();
   const { user } = useUser();
   const zones = answers.analysis?.zones ?? [];
@@ -73,7 +73,7 @@ export function BodyHomeScreen({ navigation }: any) {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl }}
+      contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingTop: spacing.lg, paddingBottom: spacing.xxl }}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.titleRow}>
@@ -89,7 +89,7 @@ export function BodyHomeScreen({ navigation }: any) {
 
       {answers.bodyPhotoUri ? (
         <FadeInUp>
-          <View style={styles.photoWrap}>
+          <View style={[styles.photoWrap, { height: Math.min(width * 0.9, verticalScale(420)) }]}>
             <Image source={{ uri: answers.bodyPhotoUri }} style={styles.photo} />
             <LinearGradient colors={['transparent', 'rgba(14,16,22,0.85)']} style={styles.photoOverlay} />
             <View style={styles.photoContent}>
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   progressBtnText: { ...font.tiny, fontWeight: '700', color: colors.brand },
 
-  photoWrap: { borderRadius: radius.xl, overflow: 'hidden', marginBottom: spacing.md, height: width * 0.9 },
+  photoWrap: { borderRadius: radius.xl, overflow: 'hidden', marginBottom: spacing.md },
   photo: { width: '100%', height: '100%' },
   photoOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 140 },
   photoContent: { position: 'absolute', bottom: spacing.md, left: spacing.md, right: spacing.md },

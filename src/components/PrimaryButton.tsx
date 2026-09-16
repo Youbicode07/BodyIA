@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Pressable, Text, StyleSheet, Animated, StyleProp, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadow, font } from '../theme/colors';
+import { useResponsive } from '../utils/responsive';
 
 type Props = {
   label: string;
@@ -14,6 +15,7 @@ type Props = {
 
 export function PrimaryButton({ label, onPress, disabled, style, variant = 'primary', icon }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
+  const { moderateScale } = useResponsive();
   const isPrimary = variant === 'primary';
   const isOutline = variant === 'outline';
 
@@ -39,7 +41,7 @@ export function PrimaryButton({ label, onPress, disabled, style, variant = 'prim
         ]}
       >
         {icon ? <Ionicons name={icon} size={19} color={disabled ? colors.faint : tint} /> : null}
-        <Text style={[styles.label, { color: disabled ? colors.faint : tint }]}>{label}</Text>
+        <Text style={[styles.label, { fontSize: moderateScale(16), color: disabled ? colors.faint : tint }]}>{label}</Text>
       </Pressable>
     </Animated.View>
   );

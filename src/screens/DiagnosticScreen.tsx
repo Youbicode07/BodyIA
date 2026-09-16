@@ -5,6 +5,15 @@ import { Card } from '../components/Card';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { GradientButton } from '../components/GradientButton';
 import { GEMINI_API_KEY, MODEL_CANDIDATES, pingGemini, testModel } from '../services/gemini';
+import {
+  GOOGLE_ANDROID_CLIENT_ID,
+  GOOGLE_IOS_CLIENT_ID,
+  GOOGLE_WEB_CLIENT_ID,
+  IS_EXPO_GO,
+  googleBlocker,
+  googleModuleAvailable,
+} from '../services/socialAuth';
+import { API_CONFIGURED, API_URL, apiRequest, loadToken, subscriptionApi } from '../services/api';
 import { colors, spacing, radius, font } from '../theme/colors';
 
 type StepState = 'pending' | 'running' | 'ok' | 'fail';
@@ -21,6 +30,12 @@ const INITIAL: Step[] = [
   { key: 'network', label: 'Connexion aux serveurs Google', state: 'pending' },
   { key: 'models', label: 'Modèles réellement disponibles', state: 'pending' },
   { key: 'vision', label: 'Analyse d\'une image test', state: 'pending' },
+  // Les briques qui échouaient sans jamais dire pourquoi sur un vrai
+  // téléphone : la connexion Google, le serveur, la base et le paiement.
+  { key: 'google', label: 'Connexion Google (configuration)', state: 'pending' },
+  { key: 'server', label: 'Serveur BodyAI et base de données', state: 'pending' },
+  { key: 'session', label: 'Session et sauvegarde en ligne', state: 'pending' },
+  { key: 'payments', label: 'Paiement', state: 'pending' },
 ];
 
 /**
@@ -87,6 +102,97 @@ export function DiagnosticScreen({ navigation }: any) {
       results.join('\n'),
     );
 
+    // 5. Connexion Google : on vérifie la CONFIGURATION, pas le compte — ouvrir
+    //    une fenêtre de connexion au milieu d'un diagnostic serait intrusif.
+    update('google', 'running');
+    const short = (value: string) => (value ? `${value.slice(0, 16)}…` : 'ABSENT');
+    const gBlocker = googleBlocker();
+    update(
+      'google',
+      gBlocker ? 'fail' : 'ok',
+      [
+        `Identifiant Web     : ${short(GOOGLE_WEB_CLIENT_ID)}`,
+        `Identifiant iOS     : ${short(GOOGLE_IOS_CLIENT_ID)}`,
+        `Identifiant Android : ${short(GOOGLE_ANDROID_CLIENT_ID)}`,
+        `Module natif        : ${googleModuleAvailable() ? 'présent' : 'ABSENT de cette build'}`,
+        `Environnement       : ${IS_EXPO_GO ? 'Expo Go (connexion impossible)' : 'build native'}`,
+        gBlocker ?? 'Prêt.',
+      ].join('\n'),
+    );
+
+    // 6. Le serveur et sa base : c'est lui qui rend les données durables.
+    update('server', 'running');
+    if (!API_CONFIGURED) {
+      const sansServeur =
+        "API_URL absente de .env : l'application fonctionne uniquement en local. " +
+        "Ni sauvegarde en ligne, ni abonnement encaissable. Renseigne l'adresse du " +
+        'backend déployé, puis relance avec « npx expo start -c ».';
+      update('server', 'fail', sansServeur);
+      update('session', 'fail', 'Impossible sans serveur configuré.');
+      update('payments', 'fail', 'Impossible sans serveur configuré.');
+      setRunning(false);
+      setDone(true);
+      return;
+    }
+
+    try {
+      const health = await apiRequest<any>('/health', { auth: false });
+      const dbOk = health?.database && !String(health.database).startsWith('erreur');
+      update(
+        'server',
+        dbOk ? 'ok' : 'fail',
+        [
+          `Adresse             : ${API_URL}`,
+          `Base de données     : ${health?.database ?? 'inconnue'}`,
+          `Secret de session   : ${health?.sessionSecret ? 'configuré' : 'ABSENT — sessions perdues à chaque redémarrage'}`,
+          `Google côté serveur : ${health?.googleAuth ? 'configuré' : 'ABSENT — GOOGLE_WEB_CLIENT_ID manquant dans backend/.env'}`,
+        ].join('\n'),
+      );
+    } catch (err) {
+      update('server', 'fail', err instanceof Error ? err.message : String(err));
+    }
+
+    // 7. La session : sans elle, rien n'est sauvegardé en ligne.
+    update('session', 'running');
+    const token = await loadToken();
+    if (!token) {
+      update('session', 'fail', 'Aucune session : connecte-toi pour activer la sauvegarde en ligne.');
+    } else {
+      try {
+        const me = await apiRequest<any>('/api/auth/me');
+        update(
+          'session',
+          'ok',
+          [
+            `Connecté : ${me?.user?.name ?? '?'} (${me?.user?.provider ?? '?'})`,
+            `Identifiant serveur : ${me?.user?.id ?? '?'}`,
+            'Tes données sont sauvegardées en ligne.',
+          ].join('\n'),
+        );
+      } catch (err) {
+        update('session', 'fail', err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    // 8. Paiement : un prestataire est-il réellement configuré ?
+    update('payments', 'running');
+    try {
+      const cfg = await subscriptionApi.plans();
+      update(
+        'payments',
+        cfg.configured ? 'ok' : 'fail',
+        [
+          `Prestataire : ${cfg.provider ?? 'aucun'}`,
+          `Formules    : ${(cfg.plans ?? []).map((p: any) => `${p.id} ${p.price}`).join(' · ') || 'aucune'}`,
+          cfg.configured
+            ? 'Paiement opérationnel.'
+            : (cfg.error ?? 'Clés du prestataire absentes de backend/.env (CMI ou Stripe).'),
+        ].join('\n'),
+      );
+    } catch (err) {
+      update('payments', 'fail', err instanceof Error ? err.message : String(err));
+    }
+
     setRunning(false);
     setDone(true);
   };
@@ -112,16 +218,17 @@ export function DiagnosticScreen({ navigation }: any) {
       showsVerticalScrollIndicator={false}
     >
       <ScreenHeader
-        title="Diagnostic IA"
-        subtitle="Teste chaque étape de l'analyse photo"
+        title="Diagnostic"
+        subtitle="IA, Google, serveur, base de données et paiement"
         onBack={() => navigation.goBack()}
       />
 
       <Card style={styles.introCard}>
         <Ionicons name="pulse" size={22} color={colors.brand} />
         <Text style={styles.introText}>
-          Ce test reproduit exactement ce que fait l'analyse photo. Si elle échoue, l'étape en rouge
-          ci-dessous indique pourquoi.
+          Ce test reproduit exactement ce que fait l'application : l'analyse photo, la
+          configuration de la connexion Google et le serveur de paiement. Chaque étape en rouge
+          indique précisément ce qui manque, et où le corriger.
         </Text>
       </Card>
 

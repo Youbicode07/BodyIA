@@ -621,6 +621,28 @@ app.post('/checkout/cmi/return', (req, res) => {
 </body></html>`);
 });
 
+/**
+ * MAINTIEN EN ÉVEIL — ET POURQUOI IL NE TOUCHE PAS À LA BASE
+ * ==========================================================
+ *
+ * Un service web gratuit s'endort après 15 minutes sans trafic. La parade
+ * habituelle est un ping régulier (cron-job.org, UptimeRobot) pour le garder
+ * debout. Mais pinguer /health serait un piège : /health interroge la base, et
+ * une base Neon gratuite est facturée à l'heure de CALCUL, avec 100 heures par
+ * mois. Un réveil toutes les 10 minutes la maintiendrait allumée en permanence
+ * — environ 720 heures — et Neon suspendrait tout avant la fin de la première
+ * semaine.
+ *
+ * Cette route ne touche donc à rien : elle garde le serveur web éveillé et
+ * laisse la base s'endormir quand personne ne s'en sert. Les deux quotas
+ * gratuits tiennent alors ensemble.
+ *
+ * C'est /ping qu'il faut donner au service de surveillance, PAS /health.
+ */
+app.get('/ping', (req, res) => {
+  res.json({ ok: true, at: Date.now() });
+});
+
 app.get('/health', async (req, res) => {
   let paymentProvider = null;
   try {

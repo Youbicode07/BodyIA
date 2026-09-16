@@ -4,8 +4,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { GymScene } from './GymScene';
 import { colors, radius, font } from '../theme/colors';
+import { useResponsive } from '../utils/responsive';
 
 export function OnboardingMedia({ stepId }: { stepId: string }) {
+  const { width, verticalScale } = useResponsive();
   const rotation = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -28,7 +30,7 @@ export function OnboardingMedia({ stepId }: { stepId: string }) {
   const scaleStyle = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.04] });
 
   return (
-    <View style={styles.frame}>
+    <View style={[styles.frame, { height: verticalScale(154) }]}>
       <LinearGradient
         colors={['#0C1930', '#164A69', '#0EA5A5']}
         start={{ x: 0, y: 0 }}
@@ -37,8 +39,8 @@ export function OnboardingMedia({ stepId }: { stepId: string }) {
       >
         <Animated.View style={[styles.orbit, { transform: [{ rotate: spinStyle }] }]} />
         <Animated.View style={[styles.scene, { transform: [{ scale: scaleStyle }] }]}>
-          <View style={styles.scenePanel}>
-            <GymScene scene={stepId === 'speed' || stepId.includes('goal') ? 'progress' : 'gym'} width={225} />
+          <View style={[styles.scenePanel, { width: Math.min(width - 64, 238) }]}>
+            <GymScene scene={stepId === 'speed' || stepId.includes('goal') ? 'progress' : 'gym'} width={Math.min(width - 80, 225)} />
           </View>
         </Animated.View>
         <View style={styles.topRow}>

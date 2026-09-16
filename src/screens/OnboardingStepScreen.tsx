@@ -12,6 +12,8 @@ import { WheelPicker } from '../components/WheelPicker';
 import { OnboardingMedia } from '../components/OnboardingMedia';
 import { useOnboarding } from '../context/OnboardingContext';
 import { colors, spacing, radius, font } from '../theme/colors';
+import { useResponsive } from '../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MONTHS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -51,6 +53,8 @@ export function OnboardingStepScreen({ route, navigation }: any) {
   const step = onboardingSteps[index];
   const { answers, updateAnswers } = useOnboarding();
   const { height: screenHeight } = useWindowDimensions();
+  const { horizontalPadding, verticalScale, moderateScale } = useResponsive();
+  const insets = useSafeAreaInsets();
 
   const [selected, setSelected] = useState<string[]>([]);
   // Valeurs numériques : plus aucune saisie texte sur ces étapes, donc plus de
@@ -169,7 +173,20 @@ export function OnboardingStepScreen({ route, navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
+      <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.container,
+        {
+          paddingHorizontal: horizontalPadding,
+          paddingTop: verticalScale(spacing.xl),
+          paddingBottom: verticalScale(spacing.lg),
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.topBar}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={10}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
@@ -182,9 +199,13 @@ export function OnboardingStepScreen({ route, navigation }: any) {
         </Text>
       </View>
 
-      <OnboardingVisual stepId={step.id} />
+      <View style={{ height: verticalScale(154), marginBottom: spacing.sm }}>
+        <OnboardingVisual stepId={step.id} />
+      </View>
       <Text style={styles.eyebrow}>TON PLAN SE CONSTRUIT</Text>
-      <Text style={styles.title}>{step.id === 'speed' ? speedConfig.title : step.title}</Text>
+      <Text style={[styles.title, { fontSize: moderateScale(28) }]}>
+        {step.id === 'speed' ? speedConfig.title : step.title}
+      </Text>
       {step.subtitle || step.id === 'speed' ? (
         <Text style={styles.subtitle}>
           {step.id === 'speed'
@@ -217,7 +238,7 @@ export function OnboardingStepScreen({ route, navigation }: any) {
       ) : null}
 
       {(step.type === 'choice' || step.type === 'multi-choice') && (
-        <ScrollView style={styles.options} showsVerticalScrollIndicator={false}>
+        <View style={styles.options}>
           {step.options?.map((opt, i) => (
             <FadeInUp key={opt.value} delay={i * 45}>
               <ChoiceCard
@@ -228,7 +249,7 @@ export function OnboardingStepScreen({ route, navigation }: any) {
               />
             </FadeInUp>
           ))}
-        </ScrollView>
+        </View>
       )}
 
       {step.type === 'height-weight' && (
@@ -315,26 +336,44 @@ export function OnboardingStepScreen({ route, navigation }: any) {
         </View>
       )}
 
-      <View style={{ flex: 1 }} />
-      <GradientButton
-        label="Continuer"
-        icon="arrow-forward"
-        onPress={handleContinue}
-        disabled={!canContinue()}
-      />
+      </ScrollView>
+      <View
+        style={[
+          styles.footer,
+          {
+            paddingHorizontal: horizontalPadding,
+            paddingBottom: Math.max(insets.bottom, spacing.sm),
+          },
+        ]}
+      >
+        <GradientButton
+          label="Continuer"
+          icon="arrow-forward"
+          onPress={handleContinue}
+          disabled={!canContinue()}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg, paddingTop: spacing.xl },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  scroll: { flex: 1, backgroundColor: colors.bg },
+  container: { flexGrow: 1, backgroundColor: colors.bg, padding: spacing.lg, paddingTop: spacing.xl },
+  footer: {
+    backgroundColor: colors.bg,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: `${colors.cardBorder}66`,
+  },
   topBar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
   backButton: {
     width: 38, height: 38, borderRadius: 19, backgroundColor: colors.card,
     alignItems: 'center', justifyContent: 'center',
   },
   stepCount: { ...font.tiny, color: colors.subtext },
-  visual: { height: 154, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  visual: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   visualGlow: {
     position: 'absolute', width: 150, height: 110, borderRadius: 75,
     backgroundColor: `${colors.brand}12`,

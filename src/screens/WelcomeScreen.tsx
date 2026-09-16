@@ -1,13 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientButton } from '../components/GradientButton';
 import { FadeInUp } from '../components/FadeInUp';
 import { GymScene } from '../components/GymScene';
 import { colors, spacing, radius, font, gradients } from '../theme/colors';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '../utils/responsive';
 
 const FEATURES: { icon: keyof typeof Ionicons.glyphMap; gradient: [string, string]; title: string; text: string }[] = [
   {
@@ -32,6 +31,7 @@ const FEATURES: { icon: keyof typeof Ionicons.glyphMap; gradient: [string, strin
 
 export function WelcomeScreen({ navigation }: any) {
   const float = useRef(new Animated.Value(0)).current;
+  const { width, horizontalPadding, verticalScale, moderateScale } = useResponsive();
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -47,11 +47,17 @@ export function WelcomeScreen({ navigation }: any) {
   const translateY = float.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingHorizontal: horizontalPadding, paddingTop: verticalScale(spacing.xxl) }]}>
       {/* Halo décoratif en fond */}
       <LinearGradient
         colors={['rgba(56,189,248,0.22)', 'rgba(17,24,39,0)']}
-        style={styles.halo}
+        style={[styles.halo, {
+          top: -width * 0.4,
+          left: -width * 0.2,
+          width: width * 1.4,
+          height: width * 1.1,
+          borderRadius: width,
+        }]}
       />
 
       <View style={styles.hero}>
@@ -59,11 +65,15 @@ export function WelcomeScreen({ navigation }: any) {
           colors={['#0C1930', '#164A69', '#0EA5A5']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.heroCard}
+          style={[styles.heroCard, { height: verticalScale(188) }]}
         >
-          <View style={styles.heroGlow} />
+          <View style={[styles.heroGlow, {
+            width: width * 0.9,
+            height: width * 0.9,
+            borderRadius: width,
+          }]} />
           <Animated.View style={{ transform: [{ translateY }] }}>
-            <GymScene scene="gym" width={width - spacing.lg * 2 - 24} />
+            <GymScene scene="gym" width={Math.min(width - horizontalPadding * 2 - 24, 360)} />
           </Animated.View>
           <View style={styles.heroBadge}>
             <Ionicons name="sparkles" size={14} color={colors.white} />
@@ -73,8 +83,8 @@ export function WelcomeScreen({ navigation }: any) {
       </View>
 
       <FadeInUp delay={100}>
-        <Text style={styles.title}>Transforme ton corps</Text>
-        <Text style={styles.titleAccent}>avec l'intelligence artificielle</Text>
+        <Text style={[styles.title, { fontSize: moderateScale(34) }]}>Transforme ton corps</Text>
+        <Text style={[styles.titleAccent, { fontSize: moderateScale(24) }]}>avec l'intelligence artificielle</Text>
         <Text style={styles.subtitle}>
           Une photo suffit. L'IA analyse ta morphologie et construit ton programme.
         </Text>
@@ -99,10 +109,13 @@ export function WelcomeScreen({ navigation }: any) {
       <View style={{ flex: 1 }} />
 
       <FadeInUp delay={520}>
+        {/* La connexion passe AVANT le questionnaire : les réponses sont ainsi
+            rattachées au compte dès la première question, et l'application
+            n'a plus jamais à les redemander au lancement suivant. */}
         <GradientButton
           label="Commencer"
           icon="arrow-forward"
-          onPress={() => navigation.navigate('OnboardingStep', { index: 0 })}
+          onPress={() => navigation.navigate('Auth', { returnTo: 'onboarding' })}
         />
         <Text style={styles.footnote}>Analyse gratuite · Aucune carte requise</Text>
       </FadeInUp>
@@ -112,11 +125,10 @@ export function WelcomeScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg, paddingTop: spacing.xxl },
-  halo: { position: 'absolute', top: -width * 0.4, left: -width * 0.2, width: width * 1.4, height: width * 1.1, borderRadius: width },
+  halo: { position: 'absolute' },
   hero: { alignItems: 'center', marginBottom: spacing.lg },
   heroCard: {
     width: '100%',
-    height: 188,
     borderRadius: radius.xl,
     overflow: 'hidden',
     alignItems: 'center',
@@ -129,9 +141,6 @@ const styles = StyleSheet.create({
   },
   heroGlow: {
     position: 'absolute',
-    width: width * 0.9,
-    height: width * 0.9,
-    borderRadius: width,
     backgroundColor: 'rgba(225,255,255,0.13)',
   },
   heroBadge: {
@@ -148,7 +157,7 @@ const styles = StyleSheet.create({
   },
   heroBadgeText: { ...font.tiny, color: colors.white, fontSize: 9 },
   title: { ...font.display, color: colors.brandAlt, textAlign: 'center' },
-  titleAccent: { ...font.display, color: colors.text, textAlign: 'center', fontSize: 24, marginTop: 2 },
+  titleAccent: { ...font.display, color: colors.text, textAlign: 'center', marginTop: 2 },
   subtitle: {
     ...font.body, color: colors.subtext, textAlign: 'center',
     marginTop: spacing.sm, marginBottom: spacing.lg, paddingHorizontal: spacing.md, lineHeight: 21,

@@ -165,6 +165,15 @@ module.exports = {
     },
     android: {
       package: 'com.bodyai.yourh2026',
+      // Sans ça, Android sauvegarde automatiquement AsyncStorage (compte,
+      // questionnaire, programme...) sur le Drive du compte Google de
+      // l'appareil, et la restaure telle quelle à la prochaine installation.
+      // Résultat observé : un « nouvel » utilisateur retombe sur le compte et
+      // les données du test précédent au lieu d'un onboarding vierge. La
+      // synchronisation réelle passe par le serveur (voir SubscriptionContext,
+      // sync.ts) — cette sauvegarde silencieuse n'a donc aucune utilité et
+      // ne fait que fausser le premier lancement.
+      allowBackup: false,
       // Déclarées explicitement : le retour de paiement et l'appareil photo en
       // dépendent, et une permission manquante échoue silencieusement.
       permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE', 'POST_NOTIFICATIONS'],

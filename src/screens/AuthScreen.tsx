@@ -173,9 +173,24 @@ export function AuthScreen({ navigation, route }: any) {
   };
 
   return (
+    /**
+     * `behavior={undefined}` sur Android faisait de ce composant une coquille
+     * vide sur cette plateforme : il ne remontait RIEN quand le clavier
+     * s'ouvrait. Le manifeste déclare bien `windowSoftInputMode="adjustResize"`,
+     * mais ça ne suffit pas seul avec un contenu centré (`justifyContent:
+     * 'center'`) — le mot de passe, en bas de la pile de champs, se
+     * retrouvait couvert par le clavier sans qu'aucun défilement automatique
+     * ne le ramène à l'écran.
+     *
+     * `behavior="height"` est le réglage standard pour Android : contrairement
+     * à `"padding"` (fiable seulement sur iOS), il réduit réellement la
+     * hauteur du conteneur quand le clavier apparaît, ce qui pousse le
+     * ScrollView à défiler jusqu'au champ actif.
+     */
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
     >
       <ScrollView
         contentContainerStyle={styles.container}

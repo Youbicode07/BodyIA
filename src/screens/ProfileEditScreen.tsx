@@ -164,9 +164,13 @@ export function ProfileEditScreen({ navigation }: any) {
   };
 
   return (
+    // "height" sur Android, pas undefined : sinon le clavier peut couvrir le
+    // champ actif (nom, e-mail) sans qu'aucun défilement automatique ne le
+    // ramène a l'écran. Voir AuthScreen.tsx pour le détail du même correctif.
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.bgSoft }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
     >
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl }}
